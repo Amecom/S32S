@@ -210,7 +210,7 @@ def master_to_s3(s3path, local_path, listobject):
 
 
 def update_script():
-    urllib.request.urlretrieve(CONFIG['S3PScript'], os.join( CURRENT_PATH, "/s323.py" ) )
+    urllib.request.urlretrieve(CONFIG['S3PScript'], os.path.join( CURRENT_PATH, "/s323.py" ) )
 
 def update_maps():
     while True:
