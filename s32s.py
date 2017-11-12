@@ -6,6 +6,7 @@ import boto3
 import shutil
 import json
 import subprocess
+import urllib.request
 from time import sleep
 
 MASTER = 0
@@ -209,36 +210,36 @@ def master_to_s3(s3path, local_path, listobject):
 
 
 def update_script():
-    bucket, prefix = split_bucket_prefix( CONFIG['S3PScript'] )
-    S3CLIENT.download_file( bucket, prefix, CURRENT_PATH + "/s323.py" )
+    urllib.request.urlretrieve(CONFIG['S3PScript'], os.join( CURRENT_PATH, "/s323.py" ) )
 
 
 def update_maps():
 
     while True:
 
-        print( "\nUPDATE MAPS\n")
-
         if CONFIG['S3PDef']:
+            print( "\nUPDATE MAPS\n")
             for n, percorso in enumerate( CONFIG['S3PDef']):
                 print( " {} = {}".format(n, percorso['name']) )
             print("")
             print("."*50)
             print("")
+            print( " m = Insert manual S3 Path")
+            print( " x = Exit")
 
-        print( " m = S3 Path")
-        print( " x = Exit")
+            s = input( "\nSelect: ").lower()
 
-        s = input( "\nSelect: ").lower()
+            if s == "x":
+                return
+        else:
+            s = "m"
 
-        if s == "x":
-            return
 
         if s == "m":
-            s3input = input("Insert S3 Path with map json files (x to Exit): ")
+            s3input = input("Insert S3 Path folder with json maps files (x to Exit): ")
             if s3input.lower() == "x":
                 return
-            print("............")
+
         else:
             try:
                 s = int(s)
