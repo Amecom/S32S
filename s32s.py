@@ -41,7 +41,7 @@ S3CLIENT = boto3.client('s3', config = boto3.session.Config(signature_version = 
 S3RESOURCE =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
-DATA_PATH = os.path.join( CURRENT_PATH, "DATA")
+MAPS_PATH = os.path.join( CURRENT_PATH, "s32s_maps")
 STR_CONTINUE = "\nDone. Press ENTER to continue... "
 CONFIG = None
 
@@ -210,7 +210,7 @@ def master_to_s3(s3path, local_path, listobject):
 
 def update_script():
     bucket, prefix = split_bucket_prefix( CONFIG['S3PScript'] )
-    S3CLIENT.download_file( bucket, prefix, CURRENT_PATH + "/u.py" )
+    S3CLIENT.download_file( bucket, prefix, CURRENT_PATH + "/s323.py" )
 
 
 def update_maps():
@@ -252,7 +252,7 @@ def update_maps():
                     continue
 
         files = filter_files( s3_ls(s3input) )
-        s3_to_local(s3input, DATA_PATH, files)
+        s3_to_local(s3input, MAPS_PATH, files)
         return
 
 def load_configuration():
@@ -271,9 +271,9 @@ def load_configuration():
 
 def load_maps():
     json_data = []
-    for file in os.listdir(DATA_PATH):
+    for file in os.listdir(MAPS_PATH):
         if file.endswith(".json"):
-            with open( os.path.join(DATA_PATH, file), "r") as f:
+            with open( os.path.join(MAPS_PATH, file), "r") as f:
                 jsd = json.load(f)
                 if CONFIG['ReorderPath']:
                     jsd = sorted(jsd, key=lambda k:k['name'])
@@ -341,7 +341,7 @@ This computer is:
         if i not in ["slave" ,"master"]:
             continue
         else:
-            p = os.path.join(CURRENT_PATH, "u."+i ) 
+            p = os.path.join(CURRENT_PATH, "s323."+i ) 
             with open( p, "w") as f:
                 print( "\n\nFile '{}' is been created!\n\nDelete this file to change configuration.\n".format(p) )
             input( STR_CONTINUE )
@@ -434,14 +434,14 @@ def menu(mode):
 
 def start():
     global CONFIG
-    build_dir(DATA_PATH)
+    build_dir(MAPS_PATH)
     CONFIG = load_configuration()
 
     clear_screen()
-    if os.path.isfile( os.path.join( CURRENT_PATH, "u.slave" ) ):
+    if os.path.isfile( os.path.join( CURRENT_PATH, "s323.slave" ) ):
         menu(SLAVE)
 
-    elif os.path.isfile( os.path.join( CURRENT_PATH, "u.master" ) ):
+    elif os.path.isfile( os.path.join( CURRENT_PATH, "s323.master" ) ):
         menu(MASTER)
 
     else:

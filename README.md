@@ -19,8 +19,6 @@ im modalità salve sui server che voglio aggiornare mentre utilizzo
 un altro applicativo che mi mantiene sincronizzato in tempo reale
 i dati tra il mio pc e il percorso su AWS S3.
 
-
-
 # Requisiti
 
 Lo script è stato testato con Python3.6
@@ -42,6 +40,26 @@ aws_secret_access_key = MY_SECRET_KEY
 Per maggiori informazioni a riguardo consultare la guida a BOTO3 offerta da AWS
 
 
+# Installazione dello script
+
+Per installare sul server lo script 
+è sufficiente scaricare il file:
+
+```
+$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
+```
+
+NOTA: lo script quando viene eseguito crea altri file e directory per cui potrebbe essere comodo salvarlo all'interno di una directory dedicata.
+
+Nello specifico verranno creati:
+1) una directory `s32s_data` che conterra i file di mappatura dei percorsi
+2) un file `s32s.slave` o un file `s32s.master` a seconda del tipo di configurazione scelta.
+
+(Nota: il fatto che il percorso del file contenga la parola master è una coincidenza che nulla
+ha a che vedere con il concetto di 'master' e 'slave' discusso fino ad ora)
+
+
+
 # Creazione del file di mappatura
 
 Perchè lo script funzioni è necessario creare uno, o più file,
@@ -50,7 +68,7 @@ Le informazioni mappano i percorsi tra master > s3 > slave
 che possono esseri diversi.
 
 Esempio file 'syncro.json':
-
+```
 [
     {
       "name": "PROJECT 1",
@@ -68,7 +86,7 @@ Esempio file 'syncro.json':
 	  "files": ["filename_1", "filename_2"]
     }
 ]
-
+```
 
 In questo esempio ho creato una mappa chiamta "syncro.json" che contiene due percorsi chiamati 
 'PROJECT 1' e 'PROJECT 2'.
@@ -110,19 +128,6 @@ Quindi nel percorso:
 carico il file 'syncro.json'.
 
 È possibile inserire più mappe all'interno della directory.
-
-
-# Installazione dello script
-
-Per installare sul server lo script 
-è sufficiente scaricare il file tramite un comando wget:
-
-```
-$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
-```
-
-(Nota: il fatto che il percorso del file contenga la parola master è una coincidenza che nulla
-ha a che vedere con il concetto di 'master' e 'slave' discusso fino ad ora)
 
 
 # Esecuzione dello script
