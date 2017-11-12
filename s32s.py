@@ -147,7 +147,7 @@ def s3_to_local(s3path, local_path, listobjects):
             )
           )
 
-    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL FILES in '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' end press ENTER to confirm: ".format(local_path)).lower()
+    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL LOCAL FILES STORED in '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' to confirm: ".format(local_path)).lower()
 
     if confirm == "y":
         # elimino il vecchio contenuto
@@ -179,8 +179,8 @@ def s3_to_local(s3path, local_path, listobjects):
     else:
         print("NOTHING DO")
 
-def master_to_s3(s3path, local_path, listobject):
-    bucket, prefix = split_bucket_prefix(s3path)
+
+def local_to_s3(s3path, local_path, listobject):
 
     print("\nEXECUTE COPY...\n * From Local Path\t: {}\n * To S3\t\t: {}\n".format(
                 local_path,
@@ -188,26 +188,21 @@ def master_to_s3(s3path, local_path, listobject):
             )
           )
 
-    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL FILES in AWS S3 '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' end press ENTER to confirm: ".format(s3path)).lower()
-    if confirm == "y":
+    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL FILES LOCATED in AWS S3 PATH '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' to confirm: ".format(s3path)).lower()
 
+    if confirm == "y":
         if s3_del(s3path):
             if s3_create(s3path + "/"):
                 for f in listobject:
-                    data = None
-                    print(f , "is", end= " ")
-                    if f[-1] != "/":
-                        print( "FILE")
+                    if f[-1] != "/": # FILE
                         with open( os.path.join( local_path, f), "rb" ) as bin:
                             data = bin.read()
-                    else:
-                        print( "DIR")
-                    s3_create("/".join( [bucket, prefix, f]), data )
+                    else: # DIR
+                        data = None
+                    s3_create("/".join( [s3path, f]), data )
 
     else:
-        print("NOTHING DO")
-
-    pass
+        print("SKIPPED TASK")
 
 
 def update_script():
@@ -216,9 +211,10 @@ def update_script():
     sleep(2)
     urllib.request.urlretrieve(CONFIG['S3PScript'], script_path )
 
-def update_maps():
-    while True:
 
+def update_maps():
+
+    while True:
         if CONFIG['S3PDef']:
             print( "\nUPDATE MAPPING FILES\n")
             for n, percorso in enumerate( CONFIG['S3PDef']):
@@ -254,9 +250,11 @@ def update_maps():
                     s3input = CONFIG['S3PDef'][s]['s3']
                 else:
                     continue
+
         files = filter_files( s3_ls(s3input) )
         s3_to_local(s3input, MAPS_PATH, files)
         return
+
 
 def load_configuration():
     p = os.path.join( CURRENT_PATH, "config.json")
@@ -272,52 +270,108 @@ def load_configuration():
     return data
 
 
+def is_valid_map(data):
+
+    def check_path_error(path):
+        if path[0] == "~":
+            return "path can't start with ~"
+        return None
+
+    for n, d in enumerate(data):
+
+        name = d.get("name")
+        s3_path = d.get("s3")
+        master_path = d.get("master")
+        slave_path = d.get("slave")
+
+        if name is None:
+            print( "MAP ERROR Filename '{}' list element number '{}': empty 'name' property.".format(d['filename'], n) ) 
+            break
+
+        if s3_path is None:
+            print( "MAP ERROR Filename '{}' list element name '{}': empty 's3' property.".format(d['filename'], name) )
+            break
+
+        if MODE == SLAVE:
+            if slave_path is None:
+                print( "MAP ERROR Filename '{}' list element name '{}': empty 'slave' property.".format(d['filename'], name) )
+                break
+
+            err = check_path_error(slave_path)
+            if err:
+                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(d['filename'], name, err) )
+                break
+
+        else:
+            if master_path is None:
+                print( "MAP ERROR Filename '{}' list element name '{}': empty 'master' property.".format(d['filename'], name) )
+                break
+
+            err = check_path_error(master_path)
+            if err:
+                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(d['filename'], name, err) )
+                break
+
+    else:
+        return True
+
+    return False
+
 def load_maps():
-    json_data = []
+    data = []
     for file in os.listdir(MAPS_PATH):
         if file.endswith(".json"):
             with open( os.path.join(MAPS_PATH, file), "r") as f:
-                jsd = json.load(f)
-                if CONFIG['ReorderPath']:
-                    jsd = sorted(jsd, key=lambda k:k['name'])
+                j = json.load(f)
 
-                for data in jsd:
-                    data['filename'] = file[:-5]
-                    json_data.append(data)
-    return json_data
+            if CONFIG['ReorderPath']:
+                j = sorted(j, key=lambda k:k['name'])
+
+            for d in j:
+                d['filename'] = file[:-5]
+                data.append(d)
+
+    if is_valid_map(data):
+        return data
+    else:
+        print( "*** MAP ERROR ***" )
+        input(STR_CONTINUE)
+        return []
+
+def local_ls(path):
+    path_norm = path.replace("\\","/")
+
+    files = []
+    for root, dirs, xfiles in os.walk(path_norm):
+        for name in xfiles:
+            files.append(os.path.join( root, name ) )
+        for name in dirs:
+            files.append(os.path.join( root, name ) + "/" ) 
+            
+    # NORMALIZZO I PERCORSI E LI RENDO RELATIVI
+    files = [ 
+        (f.replace("\\","/")).replace(path_norm, "")[1:]
+        for f in files ]
+    return files
 
 
 def syncronize(data):
 
     files = data.get('files')
+    # se nella definizione è presente un lista di files
+    # sincronizzo solo quelli
+    # ATTENZIONE eventuali altri file presenti localmenti nella directory verranno comunque rimossi!
+    # Altrimenti sincronizzo tutti i file presenti nel percorso S3 specificato
 
     if MODE == SLAVE:
-        # se nella definizione è presente un lista di files
-        # sincronizzo solo quelli
-        # ATTENZIONE eventuali altri file presenti localmenti nella directory verranno comunque rimossi!
-        # Altrimenti sincronizzo tutti i file presenti nel percorso S3 specificato
         if not files:
             files = filter_files( s3_ls(data['s3']) )
         s3_to_local(data['s3'], data['slave'], files)
 
     elif MODE == MASTER:
-        local_path = data['master'].replace("\\","/")
         if not files:
-
-            print("WALK", data['master'])
-            files = []
-            for root, dirs, xfiles in os.walk(local_path):
-                for name in xfiles:
-                    files.append(os.path.join( root, name ) )
-                for name in dirs:
-                    files.append(os.path.join( root, name ) + "/" ) 
-            
-            # NORMALIZZO I PERCORSI E LI RENDO RELATIVI
-            files = [ 
-                (f.replace("\\","/")).replace(local_path, "")[1:]
-                for f in files ]
-
-        master_to_s3(data['s3'], data['master'], files )
+            files = filter_files( local_ls( data['master'] ) )
+        local_to_s3(data['s3'], data['master'], files )
 
 
 def httpd_restart():
@@ -435,7 +489,7 @@ def menu():
 
         else:
             if modulo == "all":
-                lista_aggiorna = [ x for x in range(1,len(maps))]
+                lista_aggiorna = [ x for x in range(len(maps))]
             else:
                 try:
                     modulo = int(modulo)
