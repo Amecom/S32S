@@ -45,6 +45,7 @@ CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 MAPS_PATH = os.path.join( CURRENT_PATH, "s32s_maps")
 STR_CONTINUE = "\nDone. Press ENTER to continue... "
 CONFIG = None
+MODE = None
 
 def clear_screen():
     """Pulisce lo schermo"""
@@ -219,25 +220,26 @@ def update_maps():
     while True:
 
         if CONFIG['S3PDef']:
-            print( "\nUPDATE MAPS\n")
+            print( "\nUPDATE MAPPING FILES\n")
             for n, percorso in enumerate( CONFIG['S3PDef']):
                 print( " {} = {}".format(n, percorso['name']) )
             print("")
             print("."*50)
             print("")
-            print( " m = Insert manual S3 Path")
+            print( " m = Insert S3 Path")
             print( " x = Exit")
 
             s = input( "\nSelect: ").lower()
 
-            if s == "x":
-                return
         else:
             s = "m"
 
 
-        if s == "m":
-            s3input = input("Insert S3 Path folder with json maps files (x to Exit): ")
+        if s == "x":
+            return
+
+        elif s == "m":
+            s3input = input("Insert S3 Path folder with json mapping files (x to Exit): ")
             if s3input.lower() == "x":
                 return
 
@@ -252,7 +254,6 @@ def update_maps():
                     s3input = CONFIG['S3PDef'][s]['s3']
                 else:
                     continue
-
         files = filter_files( s3_ls(s3input) )
         s3_to_local(s3input, MAPS_PATH, files)
         return
@@ -286,11 +287,11 @@ def load_maps():
     return json_data
 
 
-def syncronize(data, mode):
+def syncronize(data):
 
     files = data.get('files')
 
-    if mode == SLAVE:
+    if MODE == SLAVE:
         # se nella definizione è presente un lista di files
         # sincronizzo solo quelli
         # ATTENZIONE eventuali altri file presenti localmenti nella directory verranno comunque rimossi!
@@ -299,9 +300,10 @@ def syncronize(data, mode):
             files = filter_files( s3_ls(data['s3']) )
         s3_to_local(data['s3'], data['slave'], files)
 
-    elif mode == MASTER:
+    elif MODE == MASTER:
         local_path = data['master'].replace("\\","/")
         if not files:
+
             print("WALK", data['master'])
             files = []
             for root, dirs, xfiles in os.walk(local_path):
@@ -318,15 +320,13 @@ def syncronize(data, mode):
         master_to_s3(data['s3'], data['master'], files )
 
 
-
-
 def httpd_restart():
     """Riavvia il servizio HTTPD"""
     cmd = "sudo service httpd restart"
     subprocess.check_call(cmd.split())
 
 
-def select_pc_type():
+def select_mode():
     while True:
         clear_screen()
         print( """
@@ -347,12 +347,31 @@ This computer is:
             with open( p, "w") as f:
                 print( "\n\nFile '{}' is been created!\n\nDelete this file to change configuration.\n".format(p) )
             input( STR_CONTINUE )
-            return
+            if i == "slave":
+                return SLAVE
+            else:
+                return MASTER
 
+def show_maps():
 
-def menu(mode):
+    for n, m in enumerate( load_maps() ):
+        if MODE == SLAVE:
+            print("""\
+({}) {}
+    S3 PATH SOURCE            : {}
+    LOCAL DESTINATION (slave) : {}
+""".format( n , m.get('name'), m.get('s3'), m.get('slave') ) )
 
-    if mode == MASTER:
+        else:
+            print("""\
+({}) {}
+    LOCAL PATH (master) : {}
+    S3 DESTINATION      : {}
+""".format( n , m.get('name'), m.get('master'), m.get('s3') ) )
+
+def menu():
+
+    if MODE == MASTER:
         str_action = "UPLOAD"
     else:
         str_action = "DOWNLOAD"
@@ -373,10 +392,11 @@ def menu(mode):
             print("")
             print("."*50)
             print("")
-            print(" upm = Update Map")
+            print(" sm = Show Mapping")
+            print(" um = Update Folder Mapping")
 
             if CONFIG['S3PScript']:
-                print(" ups = Update Script")
+                print(" us = Update Script")
 
             if CONFIG['AddRH']:
                 print("")
@@ -388,16 +408,20 @@ def menu(mode):
             modulo = input("\nSelect: ").lower()
 
         else:
-            modulo = "upm"
+            modulo = "um"
 
 
         clear_screen()
 
-        if modulo == "upm":
+        if modulo == "um":
             update_maps()
 
+        elif modulo == "sm":
+            show_maps()
+            input(STR_CONTINUE)
 
-        elif CONFIG['S3PScript'] and modulo == "ups":
+
+        elif CONFIG['S3PScript'] and modulo == "us":
             update_script()
             print("DONE. Restart script.")
             break
@@ -407,7 +431,7 @@ def menu(mode):
 
         elif CONFIG['AddRH'] and  modulo == "rh":
             httpd_restart()
-            input( STR_CONTINUE)
+            input(STR_CONTINUE)
 
         else:
             if modulo == "all":
@@ -426,50 +450,32 @@ def menu(mode):
                         continue
 
             for aggiorna in lista_aggiorna:
-                syncronize(maps[aggiorna], mode)
+                syncronize(maps[aggiorna])
 
             input( STR_CONTINUE )
 
     print("\nBye\n")
 
-############
 
 def start():
     global CONFIG
+    global MODE
+
     build_dir(MAPS_PATH)
     CONFIG = load_configuration()
 
     clear_screen()
     if os.path.isfile( os.path.join( CURRENT_PATH, "s323.slave" ) ):
-        menu(SLAVE)
+        MODE = SLAVE
 
     elif os.path.isfile( os.path.join( CURRENT_PATH, "s323.master" ) ):
-        menu(MASTER)
+        MODE = MASTER
 
     else:
-        select_pc_type()
-        start()
+        MODE = select_mode()
 
-
-def test_upload():
-    b =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
-
-    bucket, prefix = split_bucket_prefix( "test.amecom.it/S23SROOT/xdir/" )
-
-    print(bucket, prefix) 
-    object = b.Object( bucket, prefix )
-#    if object.load():
-
-    with open("C:/diskstation/s3replica/AWS/S32S_DATA/TEST/root/f1.txt", "rb") as data:
-        request = object.put(
-                Body=data
-            )
-        return request['ResponseMetadata']['HTTPStatusCode'] == 200
-
-
+    menu()
 
 if __name__ == "__main__":
-    ### MAPPA >> amedeo.amecom.it/AWS/S32S_DATA/TEST/map
-
     start()
 
