@@ -96,11 +96,14 @@ def s3_ls(path):
     files = []
     for object in objects["Contents"]:
         k = object["Key"]
-        # escludo le directory
-        if k[-1] != "/":
-            # rendo il percorso relativo al prefix
-            #  (+1 per rimuovere la '/' )
-            files.append( object["Key"][len(prefix)+1:] )
+                    # escludo le directory
+                    #if k[-1] != "/":
+        # rendo il percorso relativo al prefix
+        #  (+1 per rimuovere la '/' )
+        name = object["Key"][len(prefix)+1:]
+        # la radice diventa un file vuoto che non includo
+        if name != "":
+            files.append(name)
     return files
 
 def s3_del(path):
@@ -160,22 +163,24 @@ def s3_to_local(s3path, local_path, listobjects):
 
         build_dir(local_path)
 
-        for file in listobjects:
-            file_local_path = os.path.join( local_path, file )
-            # COSTRUISCO DIRECTORY LOCALE
-            file_tree = file_local_path.split("/")
-            # in linux il primo percosro è lungezza 0
-            # quindi evito con un controllo sulla lunghezza
-            if len(file_tree) > 1:
-                p = "/".join( file_tree[0:-1] )
-                build_dir(p)
-            # DOWNLOAD
-            try:
-                print("COPY: {}".format( file_local_path ) )
-                S3CLIENT.download_file( bucket, prefix + "/" + file, file_local_path )
-            except Exception as e:
-                print(e)
-                break
+        for obj in listobjects:
+            # è una directory
+            obj_local_path = os.path.join( local_path, obj )
+            if obj_local_path[-1] == "/":
+                build_dir(obj_local_path)
+            # è un file
+            else:
+                # COSTRUISCO DIRECTORY LOCALE
+                file_tree = obj_local_path.split("/")
+                path = "/".join( file_tree[0:-1] )
+                build_dir(path)
+                # DOWNLOAD
+                try:
+                    print("COPY: {}".format( obj_local_path ) )
+                    S3CLIENT.download_file( bucket, prefix + "/" + obj, obj_local_path )
+                except Exception as e:
+                    print(e)
+                    break
     else:
         print("NOTHING DO")
 
