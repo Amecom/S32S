@@ -9,6 +9,7 @@ Il computer 'master' contiene i file originali che vengono copiati su AWS S3
 mentre il computer 'slave' copia localmente i file memorizzati su AWS S3.
 
 Percorso files:
+
 	MASTER >> S3 >> SLAVE
 
 Dato che i computer master e slave non cominucano direttamente tra loro
@@ -32,13 +33,13 @@ tramite la creazione del file:
 
 Il cui contenuto è simile questo:
 
+```
 [default]
 aws_access_key_id = MY_ACCESS_KEY
 aws_secret_access_key = MY_SECRET_KEY
+```
 
 Per maggiori informazioni a riguardo consultare la guida a BOTO3 offerta da AWS
-
-
 
 
 # Creazione del file di mappatura
@@ -104,19 +105,21 @@ Creo bucket e una cartella nella quale inserisco il file.
 
 Quindi nel percorso:
 
-bucketname/S32SMAP/foo/data
+`bucketname/S32SMAP/foo/data`
 
 carico il file 'syncro.json'.
 
 È possibile inserire più mappe all'interno della directory.
 
 
-# Installazione dello script u.py
+# Installazione dello script
 
 Per installare sul server lo script 
 è sufficiente scaricare il file tramite un comando wget:
 
-$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/u.py
+```
+$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
+```
 
 (Nota: il fatto che il percorso del file contenga la parola master è una coincidenza che nulla
 ha a che vedere con il concetto di 'master' e 'slave' discusso fino ad ora)
@@ -132,7 +135,7 @@ La prima volta che lo script viene eseguito verrà chiesto:
 state salvate le definizioni di sincronizzazione per seguire l'esempio
 come riportato fino ad ora dovrò inserire: 
 
-bucketname/S32SMAP/nomeserver/data
+`bucketname/S32SMAP/nomeserver/data`
 
 
 Se tutti i passaggi sono stati eseguiti correttamente (credenziali BOTO3 corrette, presenza delle definizioni, etc)
