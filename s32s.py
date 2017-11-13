@@ -1,51 +1,31 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import configparser
 import os
 import boto3
 import shutil
 import json
 import subprocess
 import urllib.request
+import errno
 from time import sleep
+
+config = configparser.ConfigParser()
 
 MASTER = 0
 SLAVE = 1
-
-# CONFIGURAZIONE
-# ############################################
-# NON MODIFICARE IL FILE DI CONFIGURAZIONE QUI.
-# Creare un file config.json con la propria configurazione
-# I valori che seguono sono le proprietà di default
-# ############################################
-START_CONFIG = {
-    # Url di aggiornamento script
-    "S3PScript" : "https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py",
-
-    # Percorsi delle directory S3 nelle quali sono memorizzate le
-    # definizioni di sincronizzazione e che è possibile caricare 
-    "S3PDef" : None,
-
-    # Specifica se riordinare alfabeticamente i percorsi
-    "ReorderPath": True,
-
-    # Includere il comando service HTTPD restart
-    "AddRH" : False,
-
-    # Se True non viene mostarto l'avviso di cancellazione dei file locali
-    "SkipDeleteAlert": False
-}
-
+MODE_NAME = ["MASTER","SLAVE"]
+FILENAME_CONFIG = 's32s.cf'
 # creazione del client S3, utilizzando le credenziali
 # salvate in ~/.aws/credentials
 S3CLIENT = boto3.client('s3', config = boto3.session.Config(signature_version = 's3v4'))
 S3RESOURCE =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
-MAPS_PATH = os.path.join( CURRENT_PATH, "s32s_maps")
 STR_CONTINUE = "\nDone. Press ENTER to continue... "
-CONFIG = None
 MODE = None
+MAPS = None
 
 def clear_screen():
     """Pulisce lo schermo"""
@@ -58,325 +38,307 @@ def filter_files(data:list):
     """
     return [ d for d in data if d.find("__pycache__") == -1 ]
 
-def build_dir(path, chiedi=False):
-    # Non deve eliminare niente, ma creare solo le directory 
-    # che eventualmente mancano per 'path'
-    tree = path.split("/")
-    p = []
-    for a in tree:
-        p.append(a)
-        # controllo che il primo percorso non sia vuoto (in linux succede)
-        if len(a) > 0:
-            dir = "/".join(p)
-            if not os.path.isdir( dir ):
-                if chiedi:
-                    z = input("Create '{}' y/n? ".format(dir) ).lower()
-                else:
-                    z = "y"
 
-                if z != "y":
-                    raise "impossibile continuare senza creare la directory"
-                print("MKDIR: {}".format( dir ) )
-                os.mkdir( dir )
-
-def split_bucket_prefix(path):
-    s3_part = path.split("/")
+def slipt_s3path(s3path):
+    """Return a tuple with bucket name and prefix from a given s3path.
+    """
+    s3_part = s3path.split("/")
     bucket = s3_part[0]
-    prefix = "/".join( s3_part[1:] )
+    prefix = "/".join( s3_part[1:] ) if len(s3_part) > 1 else ""
     return bucket, prefix
 
+def ls_master(path):
+    return ls_localpath(path) if MODE == MASTER else ls_s3path(path)
 
-def s3_ls(path):
+def ls_slave(path):
+    return ls_localpath(path) if MODE == SLAVE else ls_s3path(path)
+
+def ls_localpath(path):
     """
-    Restituisce la lista dei percorsi relativi
-    dei file presenti nel path S3 specificato.
+    Return generator of objects contained in 'path'.
+
+    Path objects are relative to 'path'
+    and directories endswith "/" char.
     """
-    bucket, prefix = split_bucket_prefix(path)
-    objects = S3CLIENT.list_objects_v2( Bucket=bucket, Prefix=prefix)
-    files = []
+    norm = lambda p: p.replace("\\","/")
+    base = norm(path)
+    make_relative = lambda p: norm(p).replace(base, "")[1:]
+    for root, dirs, files in os.walk(base):
+        for name in files:
+            yield make_relative(os.path.join(root, name))
+        for name in dirs:
+            yield make_relative(os.path.join( root, name ) + "/") 
+
+def ls_s3path(s3path):
+    """
+    Return a generator of objects contained in 's3path'.
+
+    Path objects are relative to 's3path'
+    and directories endswith "/" char.
+    """
+    bucket, prefix = slipt_s3path(s3path)
+    try:
+        objects = S3CLIENT.list_objects_v2( Bucket=bucket, Prefix=prefix)
+    except:
+        print(" !! S3 PATH '{}' ERROR: BUCKET NOT FOUND OR ACCESS DENIED.".format(s3path))
+        return []
+
+    if objects.get("Contents") is None:
+        print(" !! S3 PATH '{}' ERROR: NO HAVE CONTENTS.".format(s3path))
+        return []
+
     for object in objects["Contents"]:
-        k = object["Key"]
-                    # escludo le directory
-                    #if k[-1] != "/":
         # rendo il percorso relativo al prefix
-        #  (+1 per rimuovere la '/' )
+        #  (+1 per rimuovere il '/' iniziale )
         name = object["Key"][len(prefix)+1:]
         # la radice diventa un file vuoto che non includo
         if name != "":
-            files.append(name)
-    return files
+            yield name
 
-def s3_del(path):
-    print("S3 DEL: {} ... ".format(path), end="")
+################
 
-    bucket, prefix = split_bucket_prefix(path)
+def get_master(path):
+    f = get_localfile if MODE == MASTER else get_s3file
+    return f(path)
+
+def get_slave(path):
+    f = get_localfile if MODE == SLAVE else get_s3file
+    return f(path)
+
+def get_localfile(path):
+    with open( path, "rb" ) as file:
+        return file.read()
+
+def get_s3file(s3filepath):
+    bucket, prefix = slipt_s3path(s3filepath)
+    file = S3RESOURCE.Object(bucket, prefix).get()
+    return file['Body'].read()
+
+################
+
+def rm_slave(path):
+    f = rm_s3object if MODE == MASTER else rm_localobject
+    return f(path)
+
+# COMMENTATA PER NON SI DOVREBBE MAI USARE QUESTA FUNZIONE
+#def rm_master(path):
+#    return rm_s3object(path) if MODE == SLAVE else rm_localobject(path)
+
+def rm_localobject(object):
+    print(" LOCAL DEL: {}".format( object ))
+    if os.path.isdir(object):
+        shutil.rmtree(object)
+    elif os.path.isfile(object):
+        os.remove(object)
+    # e' utile fare una pausa prima per permettere al sistema di rilasciare i files
+    sleep(3)
+    return True
+
+def rm_s3object(s3object):
+    print(" S3 DEL: {}".format( s3object ))
+    bucket, prefix = slipt_s3path(s3object)
     b = S3RESOURCE.Bucket(bucket)
     try:
         request = b.objects.filter(Prefix=prefix).delete()
     except Exception as e:
-        print( "ERROR" )
+        print( " ERROR" )
         print(e)
         return False
     else:
         print( "OK" )
         return True
 
-def s3_create(path, data=None):
-    bucket, prefix = split_bucket_prefix(path)
+#############
+# COMMENTATA PER NON SI DOVREBBE MAI USARE QUESTA FUNZIONE
+#def mk_master(path, data=None):
+#    return mk_localpath(path, data=None) if MODE == MASTER else mk_s3path(path, data=None)
 
-    print("S3 CREATE: {} ... ".format( prefix ) , end="")
-    object = S3RESOURCE.Object( bucket, prefix )
+def mk_slave(path, data=None):
+    f = mk_localpath if MODE == SLAVE else mk_s3path
+    return f(path, data)
 
-
-    if data is None:
-        # crea directory
-        assert path[-1] == "/", "If data is None, path must be a directory. Directory end with /"
-        request = object.put()
+def mk_localpath(path, data=None):
+    print("LOCAL CREATE: {} ... ".format( path ) , end="")
+    if data:
+        # internamente le directory terminano sempre con "/"
+        directory = "/".join(path.split("/")[:-1]) + "/"
     else:
+        directory = path
+
+    if not os.path.exists(directory):
+        try:
+            os.makedirs(directory)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+    if data:
+        with open(path, "wb") as file:
+            file.write(data)
+    result = True
+    print( result )
+    return result
+
+
+def mk_s3path(s3object, data=None):
+    print("S3 CREATE: {} ... ".format(s3object) , end="")
+
+    bucket, prefix = slipt_s3path(s3object)
+    object = S3RESOURCE.Object( bucket, prefix )
+    if data:
         request = object.put(Body=data)
+    else:
+        # crea directory
+        request = object.put()
     
     result = request['ResponseMetadata']['HTTPStatusCode'] == 200
     print( result )
     return result
 
-
-def s3_to_local(s3path, local_path, listobjects):
-
-    bucket, prefix = split_bucket_prefix(s3path)
-
-    print("\nEXECUTE COPY...\n * From S3\t\t: {}\n * To Local Path\t: {}\n".format(
-                s3path,
-                local_path
+def copy(origin, destination, objects):
+    print("\nEXECUTE COPY...\n * FROM ORIGIN '{}'\t\t: {}\n * TO DESTINATION '{}'\t: {}\n".format(
+                "LOCAL" if MODE == MASTER else "S3",
+                origin,
+                "LOCAL" if MODE == SLAVE else "S3",
+                destination
             )
           )
-
-    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL LOCAL FILES STORED in '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' to confirm: ".format(local_path)).lower()
-
+    confirm = "y" if config['MAIN'].getboolean('skip_delete_alert') else input("*** ATTENTION ***\nALL FILES STORED in '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' to confirm: ".format(destination)).lower()
     if confirm == "y":
-        # elimino il vecchio contenuto
-        if os.path.isdir(local_path):
-            print("DEL: {}".format( local_path ))
-            shutil.rmtree(local_path)
-            # e' utile fare una pausa prima di ricreare una directory appena eliminata
-            # per permettere al sistema di rilasciare i files
-            sleep(3)
-
-        build_dir(local_path)
-
-        for obj in listobjects:
-            # è una directory
-            obj_local_path = os.path.join( local_path, obj )
-            if obj_local_path[-1] == "/":
-                build_dir(obj_local_path)
-            # è un file
+        rm_slave(destination)
+        # ricreo la directory principale (le directory devono terminare con /
+        mk_slave(destination + "/")
+        for obj in objects:
+            data = None if obj[-1] == "/" else get_master( "/".join([origin, obj]) )
+            if data is None:
+                assert obj[-1] == "/", "If data; object filename can't be endswith /"
             else:
-                # COSTRUISCO DIRECTORY LOCALE
-                file_tree = obj_local_path.split("/")
-                path = "/".join( file_tree[0:-1] )
-                build_dir(path)
-                # DOWNLOAD
-                try:
-                    print("COPY: {}".format( obj_local_path ) )
-                    S3CLIENT.download_file( bucket, prefix + "/" + obj, obj_local_path )
-                except Exception as e:
-                    print(e)
-                    break
+                assert obj[-1] != "/", "If data is None, object must be a directory. Directory ends with /"
+            mk_slave("/".join( [destination, obj]), data )
+
     else:
         print("NOTHING DO")
-
-
-def local_to_s3(s3path, local_path, listobject):
-
-    print("\nEXECUTE COPY...\n * From Local Path\t: {}\n * To S3\t\t: {}\n".format(
-                local_path,
-                s3path
-            )
-          )
-
-    confirm = "y" if CONFIG["SkipDeleteAlert"] else input("*** ATTENTION ***\nALL FILES LOCATED in AWS S3 PATH '{}' WILL BE PERMANENTLY DELETE.\n\nType 'y' to confirm: ".format(s3path)).lower()
-
-    if confirm == "y":
-        if s3_del(s3path):
-            if s3_create(s3path + "/"):
-                for f in listobject:
-                    if f[-1] != "/": # FILE
-                        with open( os.path.join( local_path, f), "rb" ) as bin:
-                            data = bin.read()
-                    else: # DIR
-                        data = None
-                    s3_create("/".join( [s3path, f]), data )
-
-    else:
-        print("SKIPPED TASK")
 
 
 def update_script():
     script_path = os.path.join( CURRENT_PATH, "s323.py" )
     os.remove(script_path)
     sleep(2)
-    urllib.request.urlretrieve(CONFIG['S3PScript'], script_path )
+    urllib.request.urlretrieve(config['MAIN']['url_script_update'], script_path )
 
 
-def update_maps():
+def input_s3path_maps(save_configuration=True):
+    """Ask user and save in configuration the s3path of mapping files
 
+    Return: 
+        - maps list
+        - None (on error or user exit)
+    """
     while True:
-        if CONFIG['S3PDef']:
-            print( "\nUPDATE MAPPING FILES\n")
-            for n, percorso in enumerate( CONFIG['S3PDef']):
-                print( " {} = {}".format(n, percorso['name']) )
-            print("")
-            print("."*50)
-            print("")
-            print( " m = Insert S3 Path")
-            print( " x = Exit")
-
-            s = input( "\nSelect: ").lower()
-
-        else:
-            s = "m"
-
-
-        if s == "x":
+        i = input("Insert S3Path of the folder contains json files for '{}' (x to Exit): ".format(MODE_NAME[MODE]))
+        if i.lower() == "x":
             return
+        if i[-1] == "/":
+            i = i[:-1]
+        maps = load_maps_from_s3path(i)
+        if maps:
+            if save_configuration:
+                config[MODE_NAME[MODE]]['s3_path_mapfiles'] = i
+                save_config()
+            return maps
 
-        elif s == "m":
-            s3input = input("Insert S3 Path folder with json mapping files (x to Exit): ")
-            if s3input.lower() == "x":
-                return
-
-        else:
-            try:
-                s = int(s)
-            except:
-                continue
-            else:
-
-                if s >= 0 and s < len( CONFIG['S3PDef'] ):
-                    s3input = CONFIG['S3PDef'][s]['s3']
-                else:
-                    continue
-
-        files = filter_files( s3_ls(s3input) )
-        s3_to_local(s3input, MAPS_PATH, files)
-        return
-
-
-def load_configuration():
-    p = os.path.join( CURRENT_PATH, "config.json")
-    if os.path.exists(p):
-        with open( p, "r") as f:
-            data = json.load(f)
+def load_maps_from_s3path(s3path):
+    maps = []
+    for object in ls_s3path(s3path):
+        if object.endswith(".json"):
+            file = get_s3file( "/".join([s3path, object] ))
+            xmap = json.loads(file.decode('utf8'))
+            for m in xmap:
+                m['filename'] = object
+            maps += xmap
     else:
-        data = {}
+        # on successuful end for
+        if is_valid_maps(maps):
+            if config['MAIN'].getboolean('reorder_map_elements'):
+                maps = sorted(maps, key=lambda k:k['name'])
+            return maps
 
-    for k , v in START_CONFIG.items():
-        if not data.get(k):
-            data[k] = v
-    return data
+    print( "*** MAP ERROR ***" )
+    input(STR_CONTINUE)
 
 
-def is_valid_map(data):
+def is_valid_maps(maps):
 
     def check_path_error(path):
         if path[0] == "~":
             return "path can't start with ~"
         return None
 
-    for n, d in enumerate(data):
+    if len(maps) == 0:
+        print("EMPTY MAPS") 
+        return False
 
-        name = d.get("name")
-        s3_path = d.get("s3")
-        master_path = d.get("master")
-        slave_path = d.get("slave")
+    for n, e in enumerate(maps):
+
+        name = e.get("name")
+        s3_path = e.get("s3")
+        master_path = e.get("master")
+        slave_path = e.get("slave")
 
         if name is None:
-            print( "MAP ERROR Filename '{}' list element number '{}': empty 'name' property.".format(d['filename'], n) ) 
+            print( "MAP ERROR Filename '{}' list element number '{}': empty 'name' property.".format(e['filename'], n) ) 
             break
 
         if s3_path is None:
-            print( "MAP ERROR Filename '{}' list element name '{}': empty 's3' property.".format(d['filename'], name) )
+            print( "MAP ERROR Filename '{}' list element name '{}': empty 's3' property.".format(e['filename'], name) )
             break
 
         if MODE == SLAVE:
             if slave_path is None:
-                print( "MAP ERROR Filename '{}' list element name '{}': empty 'slave' property.".format(d['filename'], name) )
+                print( "MAP ERROR Filename '{}' list element name '{}': empty 'slave' property.".format(e['filename'], name) )
                 break
 
             err = check_path_error(slave_path)
             if err:
-                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(d['filename'], name, err) )
+                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(e['filename'], name, err) )
                 break
 
         else:
             if master_path is None:
-                print( "MAP ERROR Filename '{}' list element name '{}': empty 'master' property.".format(d['filename'], name) )
+                print( "MAP ERROR Filename '{}' list element name '{}': empty 'master' property.".format(e['filename'], name) )
                 break
 
             err = check_path_error(master_path)
             if err:
-                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(d['filename'], name, err) )
+                print( "MAP ERROR Filename '{}' list element name '{}': {}.".format(e['filename'], name, err) )
                 break
 
     else:
+        # uscita dal ciclo senza errori
         return True
 
     return False
 
-def load_maps():
-    data = []
-    for file in os.listdir(MAPS_PATH):
-        if file.endswith(".json"):
-            with open( os.path.join(MAPS_PATH, file), "r") as f:
-                j = json.load(f)
-
-            if CONFIG['ReorderPath']:
-                j = sorted(j, key=lambda k:k['name'])
-
-            for d in j:
-                d['filename'] = file[:-5]
-                data.append(d)
-
-    if is_valid_map(data):
-        return data
-    else:
-        print( "*** MAP ERROR ***" )
-        input(STR_CONTINUE)
-        return []
-
-def local_ls(path):
-    path_norm = path.replace("\\","/")
-
-    files = []
-    for root, dirs, xfiles in os.walk(path_norm):
-        for name in xfiles:
-            files.append(os.path.join( root, name ) )
-        for name in dirs:
-            files.append(os.path.join( root, name ) + "/" ) 
-            
-    # NORMALIZZO I PERCORSI E LI RENDO RELATIVI
-    files = [ 
-        (f.replace("\\","/")).replace(path_norm, "")[1:]
-        for f in files ]
-    return files
 
 
-def syncronize(data):
 
-    files = data.get('files')
+def syncronize(xmap):
+
     # se nella definizione è presente un lista di files
     # sincronizzo solo quelli
     # ATTENZIONE eventuali altri file presenti localmenti nella directory verranno comunque rimossi!
     # Altrimenti sincronizzo tutti i file presenti nel percorso S3 specificato
 
-    if MODE == SLAVE:
-        if not files:
-            files = filter_files( s3_ls(data['s3']) )
-        s3_to_local(data['s3'], data['slave'], files)
+    if MODE == MASTER:
+        origin = 'master'
+        destination = 's3'
+    else:
+        origin = 's3'
+        destination = 'slave'
 
-    elif MODE == MASTER:
-        if not files:
-            files = filter_files( local_ls( data['master'] ) )
-        local_to_s3(data['s3'], data['master'], files )
+    objects = xmap.get('files')
+    if not objects: 
+        objects = ls_master(xmap[origin])
+    copy(xmap[origin], xmap[destination], objects)
 
 
 def httpd_restart():
@@ -385,156 +347,207 @@ def httpd_restart():
     subprocess.check_call(cmd.split())
 
 
+def switch_mode():
+    config['MAIN']['exe_mode'] = str(abs(MODE-1))
+    save_config()
+    main()
+
 def select_mode():
     while True:
         clear_screen()
         print( """
-FIRST CONFIGURATION
+SELECT RUN MODE:
 
-This computer is:
+    {} = MASTER: AWS S3 files will be replaced with local files
+    {} = SLAVE: Local files will be replaced with files stored on AWS S3
 
-    master = AWS S3 files wil be replaced with local files
-    slave  = Local files will be replaced with files stored on AWS S3
+""".format( MASTER, SLAVE ))
 
-""")
-
-        i = input( "Input (master/slave): ").lower()
-        if i not in ["slave" ,"master"]:
+        option = [MASTER, SLAVE]
+        i = input( "Enter input {}: ".format(option))
+        try:
+            i = int(i)
+        except:
             continue
         else:
-            p = os.path.join(CURRENT_PATH, "s323."+i ) 
-            with open( p, "w") as f:
-                print( "\n\nFile '{}' is been created!\n\nDelete this file to change configuration.\n".format(p) )
-            input( STR_CONTINUE )
-            if i == "slave":
-                return SLAVE
+            if i not in option:
+                continue
             else:
-                return MASTER
+                config['MAIN']['exe_mode'] = str(i)
+                save_config()
+            break
+    return i
 
 def show_maps():
 
-    for n, m in enumerate( load_maps() ):
+    for n, m in enumerate( MAPS ):
         if MODE == SLAVE:
             print("""\
-({}) {}
-    S3 PATH SOURCE            : {}
-    LOCAL DESTINATION (slave) : {}
-""".format( n , m.get('name'), m.get('s3'), m.get('slave') ) )
+{} - '{}'
+    FROM ORIGIN (S3)             : {}
+    TO DESTINATION (LOCAL SLAVE) : {}
+""".format( m.get('name'), m.get('filename'), m.get('s3'), m.get('slave') ) )
 
         else:
             print("""\
-({}) {}
-    LOCAL PATH (master) : {}
-    S3 DESTINATION      : {}
-""".format( n , m.get('name'), m.get('master'), m.get('s3') ) )
+{} - '{}'
+    FROM ORIGIN (LOCAL MASTER) : {}
+    TO DESTINATION  (S3)       : {}
+""".format( m.get('name'), m.get('filename'), m.get('master'), m.get('s3') ) )
+    input(STR_CONTINUE)
 
 def menu():
-
-    if MODE == MASTER:
-        str_action = "UPLOAD"
-    else:
-        str_action = "DOWNLOAD"
+    global MAPS
+    str_action = "REPLACE S3 OBJECT WITH LOCAL ONES" if MODE == MASTER else "REPLACE LOCAL OBJECTS WITH THOSE STORED IN S3"
 
     while True:
 
         clear_screen()
 
-        maps = load_maps()
+        print(" *** MODE: {} | S3 MAPS PATH: {} ***".format(
+            MODE_NAME[MODE],
+            config[MODE_NAME[MODE]].get("s3_path_mapfiles")
+            )
+        )
 
-        if maps:
-            print("\n{}\n".format(str_action))
-            for n, m in enumerate( maps ):
-                print(" {:>3} = {}".format( n , m['name'] ) )
+        print("\n OPTIONS:\n")
+        print(" ms = Show maps details")
+        print(" mr = Reload current maps")
+        print(" mc = Change {} maps".format("SLAVE" if MODE == SLAVE else "MASTER"))
+        print(" sw = Switch to {} Mode".format("SLAVE" if MODE == MASTER else "MASTER" ))
+        if config['MAIN'].get('url_script_update', None):
+            print(" us = Update Script")
+        print("  x = Exit")
 
-            print("")
-            print(" all = {} ALL".format(str_action))
-            print("")
-            print("."*50)
-            print("")
-            print(" sm = Show Mapping")
-            print(" um = Update Folder Mapping")
+        print("\n {}:\n".format(str_action))
+        for n, m in enumerate( MAPS ):
+            print(" {:>3} = {}".format( n , m['name'] ) )
 
-            if CONFIG['S3PScript']:
-                print(" us = Update Script")
+        print(" all = REPLACE ALL")
 
-            if CONFIG['AddRH']:
-                print("")
-                print("  rh = $ service HTTPD restart")
 
-            print("")
-            print("   x = Exit")
-
-            modulo = input("\nSelect: ").lower()
-
-        else:
-            modulo = "um"
-
+        i = input("\n > Enter input: ").lower()
 
         clear_screen()
 
-        if modulo == "um":
-            update_maps()
+        if i == "x":
+            break
 
-        elif modulo == "sm":
+        elif i == "sw":
+            switch_mode()
+            break
+
+        elif i == "mr":
+            maps = get_maps()
+            if maps:
+                MAPS = maps
+
+        elif i == "mc":
+            maps = input_s3path_maps()
+            if maps:
+                MAPS = maps
+
+        elif i == "ms":
             show_maps()
-            input(STR_CONTINUE)
 
 
-        elif CONFIG['S3PScript'] and modulo == "us":
+        elif config['MAIN'].get('url_script_update', False) and i == "us":
             update_script()
             print("DONE. Restart script.")
             break
 
-        elif modulo == "x":
-            break
-
-        elif CONFIG['AddRH'] and  modulo == "rh":
+        elif i == "rh":
             httpd_restart()
             input(STR_CONTINUE)
 
         else:
-            if modulo == "all":
-                lista_aggiorna = [ x for x in range(len(maps))]
+            if i == "all":
+                lista_aggiorna = [ x for x in range(len(MAPS))]
             else:
                 try:
-                    modulo = int(modulo)
+                    i = int(i)
                 except:
                     # invalid choice
                     continue
                 else:
-                    if modulo >= 0 and modulo < len(maps):
-                        lista_aggiorna = [ modulo ]
+                    if i >= 0 and i < len(MAPS):
+                        lista_aggiorna = [ i ]
                     else:
                         # invalid choice
                         continue
 
             for aggiorna in lista_aggiorna:
-                syncronize(maps[aggiorna])
+                syncronize(MAPS[aggiorna])
 
             input( STR_CONTINUE )
 
     print("\nBye\n")
 
 
-def start():
-    global CONFIG
-    global MODE
+def load_config():
+    global config
+    if not config.read(FILENAME_CONFIG):
+        load_default_config()
+        save_config()
 
-    build_dir(MAPS_PATH)
-    CONFIG = load_configuration()
+def s3_path_mapfiles(mode, s3path):
+    config[MODE_NAME[mode]]['s3_path_mapfiles'] = s3path
+    save_config()
+
+def load_default_config():
+    global config
+    config['MAIN'] = {
+        'url_script_update': "https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py",
+        'reorder_map_elements': False,
+        'skip_delete_alert': False,
+        'exe_mode': ''
+        }
+    config[MODE_NAME[MASTER]] = {
+        's3_path_mapfiles': ''
+        }
+    config[MODE_NAME[SLAVE]] = {
+        's3_path_mapfiles': ''
+        }
+
+
+def save_config():
+    with open(FILENAME_CONFIG, 'w') as configfile:
+      config.write(configfile)
+
+
+def get_maps():
+    s3path = config[MODE_NAME[MODE]].get("s3_path_mapfiles")
+    if s3path:
+        maps = load_maps_from_s3path(s3path)
+        if maps:
+            return maps
+
+    # se non è presente una mappa valida nel file di configurazione
+    return input_s3path_maps()
+
+
+def main(mode=None):
+    global MODE
+    global MAPS
 
     clear_screen()
-    if os.path.isfile( os.path.join( CURRENT_PATH, "s323.slave" ) ):
-        MODE = SLAVE
+    load_config()
+    try:
+        MODE = int( config['MAIN'].get('exe_mode') )
+    except:
+        MODE = None 
 
-    elif os.path.isfile( os.path.join( CURRENT_PATH, "s323.master" ) ):
-        MODE = MASTER
-
-    else:
+    if MODE is None:
         MODE = select_mode()
 
-    menu()
+    print("Loading maps...")
+    maps = get_maps()
+    if maps:
+        MAPS = maps
+        menu()
+    else:
+        print("COnfiguration fails, restart the script.")
 
 if __name__ == "__main__":
-    start()
+    main()
 
