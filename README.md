@@ -78,21 +78,32 @@ ha a che vedere con il concetto di 'master' e 'slave' discusso fino ad ora. :)
 # Creazione dei percorsi di mappatura
 
 Perchè lo script possa essere utilizzato è necessario creare uno, o più file,
-contenenti le informazioni di mappatura dei percorsi e dare a queste 'mappe'
-un nome.
+contenenti le informazioni di mappatura dei percorsi e dare a queste 'mappature'
+un nome. Un file di mappatura è un file JSON che contiene una lista di mappature.
 
-I percorsi di mappatura sono delle directory non dei file.
+Ogni mappatura è un dizionario con i percorsi di mappatura.
 
-Una mappa contiene una percorso 'master' ovvero la directory che contiene
+I PERCORSI DI MAPPATURA SONO DIRECTORY NON DEI FILE.
+
+Una mappatura contiene una percorso 'master' ovvero la directory che contiene
 i file originali, un percorso 's3' ovvero dove il bucket/prefix dove verranno 
 trasferiti i file e un percorso 'slave' ovvero la directory in cui i file 
 verranno copiati recuperandoli dal percorso S3.
+
+In dizionario di mappatura:
+la proprietà 'name' è obbligatoria. 
+la proprietà 'description' è facoltativa. 
+la proprietà 's3' è obbligatoria. 
+la proprietà 'master' è necessaria solo quando lo script viene eseguito in modalità master.
+la proprietà 'slave' è necessaria solo quando lo script viene eseguito in modalità slave.
+la proprietà 'object' è facoltativa.
+
 
 Dovrebbe essere evidente che il percorso su AWS S3 è condiviso sia dal computer master che slave
 mentre i percorsi locali possono cambiare.
 
 
-Esempio file 'mappatura.json':
+Esempio file 'mainmap.json':
 ```
 [
     {
@@ -113,41 +124,35 @@ Esempio file 'mappatura.json':
 ]
 ```
 
-In questo esempio ho creato una mappa chiamta "mappatura.json" che contiene due percorsi chiamati 
+In questo esempio ho creato un file chiamato "mainmap.json" che contiene due mappature chiamate
 'PROJECT 1' e 'PROJECT 2'.
 
-Il computer master è Windows, mentre il computer slave è Linux.
-
-Mentre la proprietà 'master' è necessaria solo quando lo script viene eseguito in modalità master
-e la proprietà 'slave' è necessaria solo quando lo script viene eseguito in modalità slave,
-la proprietà 's3' deve essere sempre presente. 
-
 In 'PROJECT 2' tramite la proprietà 'objects'
-sono specificati i file o directory (vuote) che si vuole copiare, mentre in 'PROJECT 1'
+sono specificati i file che si vuole copiare, mentre in 'PROJECT 1'
 verranno sincronizzati tutti i file e le directory presenti nel percorso master su S3
 e tutti i file presenti nel percorso S3 su slave.
 
-ATTENZIONE: SE LA DIRECTORY SPECIFICATA IN 'SLAVE' ESISTE VERRÀ CANCELLATA
-E RICREATA QUINDI I VECCHI FILE VERRANNO CANCELLATI.
+ATTENZIONE: 
+Durante la copia dei dati da un repository a un altro
+se la directory di destinazione esiste verrà cancellata
+e ricreata quindi i vecchi file verranno cancellati.
 
-
-# Salvataggio dei file mappatura
+# Utilizzo dei percorsi di mappatura
 
 I file di mappatura devono essere condivisi tra computer master e slave per questo motivo
-dovranno essere salvati in un percorso su AWS S3.
+dovranno essere salvati in un percorso AWS S3.
 
-Quindi creo un percorso su AWS S3:
+Quindi creo un percorso in:
 
-`bucketname/S32SMAP/foo/data`
+`bucketname/s32s/foo/maps`
 
-carico il file 'mappatura.json'.
+sul quale carico il file 'mainmap.json'.
 
-Il percorso di mappatura NON è il singolo file ma il percorso quindi
-quando lo script mi chiederà di inserire il percorso dei file di mappatura
-si dovrà inserire `bucketname/S32SMAP/foo/data` e non `bucketname/S32SMAP/foo/data/mappatura.json`
+Quando il programma mi chiede di inserire il percorso dei file di mappatura
+devo inserire il percorso della directory ovvero `bucketname/s32s/foo/maps`
+e non il percorso del file `bucketname/s32s/foo/maps/mainmap.json`
 
-Da questo si può dedurre che in `bucketname/S32SMAP/foo/data` è possibile inserire
-più file di mappature.
+È possibile inserire più file di mappature in un percorso S3.
 
 
 # Esecuzione dello script
