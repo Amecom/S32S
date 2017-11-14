@@ -10,6 +10,7 @@ import subprocess
 import urllib.request
 import errno
 from time import sleep
+__version__ = "1.0"
 
 S3CLIENT = boto3.client('s3', config = boto3.session.Config(signature_version = 's3v4'))
 S3RESOURCE =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
@@ -18,6 +19,9 @@ CONFIG_FILENAME = 's32s.cf'
 ISMASTER = None
 MAPS = None
 os.sep = "/"
+
+URL_SCRIPT = "https://raw.githubusercontent.com/Amecom/S32S/master/s32s.py"
+URL_GET_VERSION = "https://raw.githubusercontent.com/Amecom/S32S/master/VERSION"
 
 TXT_TRANSFER_INFO = """
  TRANSFER INFORMATION:
@@ -46,7 +50,6 @@ TXT_MENU_OPTION = """
   mr = Maps Reload
   mo = Maps Open
   sm = Switch to {mode}
-  up = Script Update
    x = Exit
 """
 TXT_RESTART = " Restart script."
@@ -292,22 +295,6 @@ def mk_s3_object(object_path, data=None):
     return result
 
 
-
-
-def update_script():
-    if CONFIG['MAIN'].get('url_script_update', None):
-        current_path = os.path.dirname(os.path.realpath(__file__))
-        #script_path = os.path.join( current_path, "s323.py" )
-        #os.remove(script_path)
-        #sleep(2)
-        #urllib.request.urlretrieve(CONFIG['MAIN']['url_script_update'], script_path )
-    else:
-        print(TXT_ERR_SCRIPT_UPDATE_CONFIG)
-        enter_to_continue()
-        return False
-
-    return True
-
 def input_s3path_maps(save_configuration=True):
     """Ask user and save in configuration the s3 path of mapping files
 
@@ -471,8 +458,6 @@ def transfer(xmap):
     else:
         print(TXT_NOTDO)
 
-
-
 def httpd_restart():
     """Restart HTTPD service """
     cmd = "sudo service httpd restart"
@@ -569,12 +554,6 @@ def menu():
             show_maps()
             enter_to_continue()
 
-        elif i == "up":
-            if update_script():
-                print(TXT_DO)
-                print(TXT_RESTART)
-                break
-
         elif i == "rh":
             httpd_restart()
             enter_to_continue()
@@ -617,7 +596,6 @@ def default_config():
     """return default configuration."""
     config = {}
     config['MAIN'] = {
-        'url_script_update': "https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py",
         'reorder_map_elements': True,
         'skip_delete_alert': False,
         'ismaster': ''
@@ -648,10 +626,49 @@ def get_maps():
     return input_s3path_maps()
 
 
+def new_version_availbale():
+    """Check if exists new version of script."""
+    import urllib.request
+    with urllib.request.urlopen(URL_GET_VERSION) as f:
+        d = f.read().decode('utf8')
+    last = d.split(".")
+    curr = __version__.split(".")
+    return int(last[0]) > int(curr[0] ) or ( int(last[0]) == int(curr[0] ) and int(last[1]) > int(curr[1]) )
+
+
+def update_routine():
+    """Retrive last version of script."""
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    script_path = os.path.join( current_path, "s323.py" )
+    script_rename = os.path.join( current_path, "s323.version_{}.py".format(__version__) )
+    os.replace( script_path, script_rename )
+    sleep(2)
+    urllib.request.urlretrieve(URL_SCRIPT, script_path )
+    return True
+
+
+def update_script():
+    """Return True if downloaded new version of script"""
+    if new_version_availbale():
+        print(" New version of script is available.")
+        i = input("\n > Enter 'y' to upgrade, anything else to skip.").lower()
+        if i == "y":
+            update_routine()
+            return True
+    return False
+
 def main():
     """Main function"""
     global ISMASTER
     global MAPS
+
+    clear()
+
+    if update_script():
+        print(TXT_DO)
+        print(TXT_RESTART)
+        return
+
 
     clear()
 
