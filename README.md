@@ -155,28 +155,26 @@ e non il percorso del file `bucketname/s32s/foo/maps/mainmap.json`
 È possibile inserire più file di mappature in un percorso S3.
 
 
+
 # Esecuzione dello script
 
-La prima volta che lo script viene eseguito verrà chiesto:
+La prima volta che lo script viene eseguito verrà chiesto di:
 
-1) Come configurare il computer: master o slave.
+1) configurare il computer come master o slave.
+2) inserire il percorso S3 dei files di mappatura
 
-2) Di inserire il percorso S3 dove sono
-state salvate le definizioni di sincronizzazione per seguire l'esempio
-come riportato fino ad ora dovrò inserire: 
-
-`bucketname/S32SMAP/nomeserver/data`
-
-Se tutti i passaggi sono stati eseguiti correttamente (credenziali BOTO3 corrette, presenza delle definizioni, etc)
-lo script mi fornisce l'interfaccia per eseguire la sincronizzazione dei dati.
+In caso di errore verificare che sia abbia accesso a AWS S3 tramite BOTO3
+e di avere le autorizzazioni di accesso sulle directory locali su cui si vuole lavorare.
 
 
 # Esecuzione contemporanea della modalità MASTER e SLAVE
 
 Il programma può essere utilizzato in uno stesso computer sia in modalità
-MASTER che SLAVE. In questo caso si dovranno inserire due differenti percorsi con i file di mappatura
-uno per la modalità MASTER e uno per la modalità SLAVE dato che utilizzare una stessa
-mappatura nelle due modalità non solo non avrebbe senso e sarebbe sbagliato
+MASTER che SLAVE. In questo caso è possibile specificare due differenti percorsi S3
+dei file di mappatura uno per la modalità MASTER e uno per la modalità SLAVE.
+
+Utilizzare una stessa mappatura nelle due modalità
+non solo non avrebbe senso e sarebbe sbagliato
 ma anche potenzialmente pericoloso per i proprio dati.
 
 
