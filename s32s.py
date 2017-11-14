@@ -628,24 +628,25 @@ def get_maps():
 
 def new_version_availbale():
     """Check if exists new version of script."""
-    import urllib.request
-    with urllib.request.urlopen(URL_GET_VERSION) as f:
-        d = f.read().decode('utf8')
-    last = d.split(".")
-    curr = __version__.split(".")
-    return int(last[0]) > int(curr[0] ) or ( int(last[0]) == int(curr[0] ) and int(last[1]) > int(curr[1]) )
-
+    try:
+        f = urllib.request.urlopen(URL_GET_VERSION,timeout=3)
+    except:
+        pass
+    else:
+        data = f.read().decode('utf-8')
+        t = [ int(i) for i in __version__.split(".") ]
+        s = [ int(i) for i in data.split(".") ]
+        return s[0] > t[0] or ( s[0] == t[0] and s[1] > t[1] )
 
 def update_routine():
     """Retrive last version of script."""
     current_path = os.path.dirname(os.path.realpath(__file__))
-    script_path = os.path.join( current_path, "s323.py" )
-    script_rename = os.path.join( current_path, "s323.version_{}.py".format(__version__) )
+    script_path = os.path.join( current_path, "s32s.py" )
+    script_rename = os.path.join( current_path, "s32s.version_{}.py".format(__version__) )
     os.replace( script_path, script_rename )
     sleep(2)
     urllib.request.urlretrieve(URL_SCRIPT, script_path )
     return True
-
 
 def update_script():
     """Return True if downloaded new version of script"""
@@ -688,7 +689,6 @@ def main():
     else:
         print(TXT_ERR_CONFIGURATION_FAILS)
         print(TXT_RESTART)
-
 
 
 if __name__ == "__main__":
