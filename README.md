@@ -1,9 +1,8 @@
 # S32S
 
 
-S32S è uno script per gestire il trasferimento di dati
-tra computer che utilizza AWS S3 come middleware e permette differenti 
-mappature dei percosri.
+S32S semplifica i trasferimenti di dati 
+tra computer attraverso AWS S3 come middleware e percorsi mappati.
 
 Il programma può essere utilizzato in modalità 'master' o 'slave'.
 Il computer 'master' copia i file locali su AWS S3
