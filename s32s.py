@@ -33,14 +33,6 @@ TXT_DELETE_WARNING = """
 
  ***************************** 
 """
-TXT_RESTART = " Restart script."
-TXT_MODE_INFO = " *** MODE: {mode} | S3 MAPS PATH: {mapspath} ***"
-TXT_ACTION_MASTER = "REPLACE S3 OBJECT WITH LOCAL ONES"
-TXT_ACTION_SLAVE = "REPLACE LOCAL OBJECTS WITH THOSE STORED IN S3"
-TXT_NOTDO = " NOTHING DONE!"
-TXT_DO = " DONE!"
-TXT_LOADING_MAPS = " Loading maps... "
-TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_MENU_MODE = """
 SELECT RUN MODE:
 
@@ -57,18 +49,23 @@ TXT_MENU_OPTION = """
   up = Script Update
    x = Exit
 """
-
+TXT_RESTART = " Restart script."
+TXT_MODE_INFO = " *** MODE: {mode} | S3 MAPS PATH: {mapspath} ***"
+TXT_ACTION_MASTER = "Replace s3 object with local ones"
+TXT_ACTION_SLAVE = "Replace local objects with those stored in S3"
+TXT_NOTDO = " Nothing done!"
+TXT_DO = " Done!"
+TXT_LOADING_MAPS = " Loading maps... "
+TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_INPUT = "\n > Enter input: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
 TXT_INPUT_ENTER = "\n > Press ENTER to continue..."
 TXT_INPUT_INSERT_MAPS_PATH = "\n > Insert S3 path contains mapping files for '{mode}' [x to Exit]: "
-TXT_INPUT_DELETE_CONFIRM = " > Confirm permanent delete [y/n] ?" 
-
+TXT_INPUT_DELETE_CONFIRM = "\n > Confirm permanent delete [y/n] ?" 
 TXT_ERR_CONFIGURATION_FAILS = " !! ERROR Configuration fails."
 TXT_ERR_S3_LIST_CONNECTION = " !! ERROR S3 PATH '{path}': bucket not found or access denied or no internet access."
 TXT_ERR_S3_LIST_CONTENTS = " !! ERROR S3 PATH '{path}': path does not have a contents or not exists."
 TXT_ERR_SCRIPT_UPDATE_CONFIG = " !! ERROR not found 'url_script_update' property in configuration file."
-TXT_ERR_MAP_INVALID = " !! ERROR IN MAPS"
 TXT_ERR_MAP_LINUX_USERHOME = " !! ERROR MAP {path}: Path can't start with ~"
 TXT_ERR_MAP_EMPTY = " !! ERROR EMPTY MAPS"
 TXT_ERR_MAP_EMPTY_NAME = " !! ERROR MAP '{filename}' list element number '{number}' does not have 'name' property."
@@ -352,7 +349,6 @@ def load_maps_from_s3path(path):
                 maps = sorted(maps, key=lambda k:k['name'])
             return maps
 
-    print( TXT_ERR_MAP_INVALID )
     enter_to_continue()
 
 
