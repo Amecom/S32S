@@ -10,7 +10,7 @@ import subprocess
 import urllib.request
 import errno
 from time import sleep
-__version__ = "1.0"
+__version__ = "1.1"
 
 S3CLIENT = boto3.client('s3', config = boto3.session.Config(signature_version = 's3v4'))
 S3RESOURCE =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
