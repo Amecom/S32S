@@ -10,15 +10,15 @@ import subprocess
 import urllib.request
 import errno
 from time import sleep
-__version__ = "1.1"
 
-S3CLIENT = boto3.client('s3', config = boto3.session.Config(signature_version = 's3v4'))
-S3RESOURCE =  boto3.resource('s3', config=boto3.session.Config(signature_version='s3v4'))
+__version__ = "1.1"
+os.sep = "/"
+
+S3RESOURCE =  boto3.resource('s3')
 CONFIG = configparser.ConfigParser()
-CONFIG_FILENAME = 's32s.cf'
+CONFIG_FILENAME = 's32s.ini'
 ISMASTER = None
 MAPS = None
-os.sep = "/"
 
 URL_SCRIPT = "https://raw.githubusercontent.com/Amecom/S32S/master/s32s.py"
 URL_GET_VERSION = "https://raw.githubusercontent.com/Amecom/S32S/master/VERSION"
@@ -52,20 +52,21 @@ TXT_MENU_OPTION = """
   sm = Switch to {mode}
    x = Exit
 """
+TXT_NEW_SCRIPT_VERSION_AVAILABLE = " New version of script is available.\v Enter 'y' to upgrade, anything else to skip."
+TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {oldscriptname}."
 TXT_RESTART = " Restart script."
 TXT_MODE_INFO = " *** MODE: {mode} | S3 MAPS PATH: {mapspath} ***"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
 TXT_ACTION_SLAVE = "Replace local objects with those stored in S3"
 TXT_NOTDO = " Nothing done!"
 TXT_DO = " Done!"
-TXT_LOADING_MAPS = " Loading maps... "
+TXT_LOADING = " Loading '{what}'... "
 TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_INPUT = "\n > Enter input: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
 TXT_INPUT_ENTER = "\n > Press ENTER to continue..."
 TXT_INPUT_INSERT_MAPS_PATH = "\n > Insert S3 path contains mapping files for '{mode}' [x to Exit]: "
 TXT_INPUT_DELETE_CONFIRM = "\n > Confirm permanent delete [y/n] ?" 
-TXT_ERR_CONFIGURATION_FAILS = " !! ERROR Configuration fails."
 TXT_ERR_S3_LIST_CONNECTION = " !! ERROR S3 PATH '{path}': bucket not found or access denied or no internet access."
 TXT_ERR_S3_LIST_CONTENTS = " !! ERROR S3 PATH '{path}': path does not have a contents or not exists."
 TXT_ERR_SCRIPT_UPDATE_CONFIG = " !! ERROR not found 'url_script_update' property in configuration file."
@@ -96,13 +97,61 @@ def clear():
     """Clear Screen."""
     os.system('cls' if os.name=='nt' else 'clear')
 
+def load_config():
+    """Load configuration and save it in global var CONFIG. 
+    
+    If configiguration file not exists create it with default values.
+    """
+    if not CONFIG.read(CONFIG_FILENAME):
+        load_default_config()
+        save_config()
 
-##def filter_files(data:list):
-##    """Regole di esclusione
-##    dalla sincronizzazione file.
-##    In questo esempio escludo sempre i file della cache di Python
-##    """
-##    return [ d for d in data if d.find("__pycache__") == -1 ]
+def load_default_config():
+    """return default configuration."""
+    CONFIG['MAIN'] = {
+        'reorder_maps_elements': True,
+        'skip_delete_alert': False,
+        'ismaster': ''
+        }
+    CONFIG[mode_name(True)] = {
+        'maps_s3_path': ''
+        }
+    CONFIG[mode_name(False)] = {
+        'maps_s3_path': ''
+        }
+
+def save_config():
+    """Save configuration change."""
+    with open(CONFIG_FILENAME, 'w') as configfile:
+        CONFIG.write(configfile)
+
+
+def new_version_available():
+    """Check if exists new version of script."""
+    try:
+        f = urllib.request.urlopen(URL_GET_VERSION,timeout=3)
+    except:
+        pass
+    else:
+        data = f.read().decode('utf-8')
+        t = [ int(i) for i in __version__.split(".") ]
+        s = [ int(i) for i in data.split(".") ]
+        return s[0] > t[0] or ( s[0] == t[0] and s[1] > t[1] )
+
+def update_routine():
+    """Retrive last version of script."""
+    rename_old = "s32s.old.V{}.py".format(__version__)
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    script_path = os.path.join( current_path, "s32s.py" )
+    script_path_old = os.path.join( current_path, rename_old )
+    os.replace( script_path, script_path_old )
+    sleep(2)
+    urllib.request.urlretrieve(URL_SCRIPT, script_path )
+    print(TXT_SCRIPT_UPDATED.format(rename_old))
+    print(TXT_RESTART)
+    enter_to_continue()
+
+    return True
 
 
 def normalize_external_path(path):
@@ -190,25 +239,15 @@ def ls_s3_path(path):
 
     Objects Path are relative to 'path'
     and directories ends with "/" char.
-
-    If error return empty list.
     """
     bucket, prefix = slipt_s3path(path)
-    try:
-        objects = S3CLIENT.list_objects_v2( Bucket=bucket, Prefix=prefix)
-    except:
-        print(TXT_ERR_S3_LIST_CONNECTION.format(path=path))
-        return []
+    objname_start_at = len(prefix)+1
+    b = S3RESOURCE.Bucket(bucket)
 
-    if objects.get("Contents") is None:
-        print(TXT_ERR_S3_LIST_CONTENTS.format(path=path))
-        return []
-
-    for object in objects["Contents"]:
-        # rendo il percorso relativo al prefix
-        #  (+1 per rimuovere il '/' iniziale )
-        name = object["Key"][len(prefix)+1:]
-        # la radice diventa un file vuoto che non includo
+    # non ci sono eccezioni fio a qui,
+    # ci possono essere b.objects.filter ....
+    for object in b.objects.filter(Prefix=prefix):
+        name = object.key[objname_start_at:]
         if name != "":
             yield name
 
@@ -225,7 +264,6 @@ def rm_slave_object(object_path):
 
 def rm_pc_object(object_path):
     """Drop all contents from local 'object_path'."""
-    print(TXT_DELETE_OBJECT.format(storage="LOCAL", object=object_path ))
     if os.path.isdir(object_path):
         shutil.rmtree(object_path)
     elif os.path.isfile(object_path):
@@ -236,7 +274,6 @@ def rm_pc_object(object_path):
 
 def rm_s3_object(object_path):
     """Drop all contents from S3 'object_path'."""
-    print(TXT_DELETE_OBJECT.format(storage="S3", object=object_path ))
     bucket, prefix = slipt_s3path(object_path)
     b = S3RESOURCE.Bucket(bucket)
     try:
@@ -244,8 +281,7 @@ def rm_s3_object(object_path):
     except Exception as e:
         print(e)
         return False
-    else:
-        return True
+    return True
 
 
 # UNUSED FUNCTION COMMENTED FOR SECURITY REASON
@@ -261,7 +297,6 @@ def mk_slave_object(object_path, data=None):
 
 def mk_pc_object(object_path, data=None):
     """Create object on local 'object_path'."""
-    print(TXT_CREATE_OBJECT.format(storage="LOCAL", object=object_path ))
     if data:
         # PATH IN THE SCRIPT ALWAYS MUST ENDS WITH "/"
         directory = "/".join(object_path.split("/")[:-1]) + "/"
@@ -283,7 +318,6 @@ def mk_pc_object(object_path, data=None):
 
 def mk_s3_object(object_path, data=None):
     """Create object on S3 'object_path'."""
-    print(TXT_CREATE_OBJECT.format(storage="S3", object=object_path ))
     bucket, prefix = slipt_s3path(object_path)
     object = S3RESOURCE.Object( bucket, prefix )
     if data:
@@ -294,34 +328,14 @@ def mk_s3_object(object_path, data=None):
     result = request['ResponseMetadata']['HTTPStatusCode'] == 200
     return result
 
-
-def input_s3path_maps(save_configuration=True):
-    """Ask user and save in configuration the s3 path of mapping files
-
-    Return: 
-        - maps list
-            or
-        - None (on error or user exit)
+def load_maps_from_s3_path(s3_path):
+    """Load maps from 's3_path'.
+    Return maps or None
     """
-    while True:
-        clear()
-        i = input(TXT_INPUT_INSERT_MAPS_PATH.format(mode=mode_name(ISMASTER)))
-        if i.lower() == "x":
-            return
-        i = normalize_external_path(i)
-        maps = load_maps_from_s3path(i)
-        if maps:
-            if save_configuration:
-                CONFIG[mode_name(ISMASTER)]['s3_path_mapfiles'] = i
-                save_config()
-            return maps
-
-def load_maps_from_s3path(path):
-    """Load all maps stored in S3 'path'."""
     maps = []
-    for object in ls_s3_path(path):
+    for object in ls_s3_path(s3_path):
         if object.endswith(".json"):
-            file = get_s3_file( "/".join([path, object] ))
+            file = get_s3_file( "/".join([s3_path, object] ))
             xmap = json.loads(file.decode('utf8'))
             for m in xmap:
                 m['filename'] = object
@@ -332,12 +346,12 @@ def load_maps_from_s3path(path):
     else:
         # on successuful end for
         if is_valid_maps(maps):
-            if CONFIG['MAIN'].getboolean('reorder_map_elements'):
+            # sort must be after validate to keep error alert most efficent.
+            if CONFIG['MAIN'].getboolean('reorder_maps_elements'):
                 maps = sorted(maps, key=lambda k:k['name'])
             return maps
 
     enter_to_continue()
-
 
 def is_valid_maps(maps):
     """Return True if maps is valid.
@@ -363,13 +377,13 @@ def is_valid_maps(maps):
         slave_path = e.get("slave")
 
         if name is None:
-            print( TXT_ERR_MAP_EMPTY_NAME.format(
+            print(TXT_ERR_MAP_EMPTY_NAME.format(
                 filename=e['filename'],
                 number=n )) 
             break
 
         if s3_path is None:
-            print( TXT_ERR_MAP_EMPTY_S3.format(
+            print(TXT_ERR_MAP_EMPTY_S3.format(
                 filename=e['filename'],
                 name=name ))
             break
@@ -398,6 +412,19 @@ def is_valid_maps(maps):
         return True
 
     return False
+
+
+def httpd_restart():
+    """Restart HTTPD service """
+    cmd = "sudo service httpd restart"
+    subprocess.check_call(cmd.split())
+
+
+def switch_mode():
+    """Switch program mode from MASTER and SLAVE and restart."""
+    CONFIG['MAIN']['ismaster'] = str(not ISMASTER)
+    save_config()
+    main()
 
 
 def transfer(xmap):
@@ -448,80 +475,119 @@ def transfer(xmap):
         confirm = "y"
 
     if confirm == "y":
+        print(TXT_DELETE_OBJECT.format(storage=destination_info['location'], object=destination ))
         rm_slave_object(destination)
+
+        print(TXT_CREATE_OBJECT.format(storage=destination_info['location'], object=destination ))
         # need add '/' to 'mk_slave_object' destination because external path don't have
         mk_slave_object(destination + "/")
         for obj in objects:
-            data = None if obj.endswith("/") else get_master_file( "/".join([origin, obj]) )
-            mk_slave_object("/".join([destination, obj]), data)
+            obj_data = None if obj.endswith("/") else get_master_file( "/".join([origin, obj]) )
+            obj_path = "/".join([destination, obj])
+            print(TXT_CREATE_OBJECT.format(storage=destination_info['location'], object=obj_path ))
+            mk_slave_object(obj_path, obj_data)
 
     else:
         print(TXT_NOTDO)
 
-def httpd_restart():
-    """Restart HTTPD service """
-    cmd = "sudo service httpd restart"
-    subprocess.check_call(cmd.split())
+def input_form_maps_s3_path():
+    """Ask user and save in configuration the s3 path of mapping files
 
+    Return: 
+        - s3_maps
+            or
+        - None (on error or user exit)
+    """
+    i = ""
+    while i == "":
+        clear()
+        i = input(TXT_INPUT_INSERT_MAPS_PATH.format(mode=mode_name(ISMASTER)))
+        if i.lower() == "x":
+            return
+        i = normalize_external_path(i)
+    clear()
+    return i
 
-def switch_mode():
-    """Switch program mode from MASTER and SLAVE and restart."""
-    CONFIG['MAIN']['ismaster'] = str(not ISMASTER)
-    save_config()
-    main()
+def input_form_ismaster():
+    """Form to ask user the programm mode (MASTER/SLAVE).
 
+    Return
+        - True
+            if usere selected MASTER
+        - False
+            if usere selected SLAVE
 
-def input_is_master():
-    """Form to ask user the programm mode (MASTER/SLAVE)."""
+    """
     # option value for master mast be "1"!
+    clear()
     option = ("1", "0")
-    while True:
+    i = None
+    while i not in option:
         clear()
         print( TXT_MENU_MODE.format(
                 inp_master=option[0],
                 info_master=str_action(True), 
                 inp_slave=option[1],
                 info_slave=str_action(False)))
-
         i = input( TXT_INPUT_OPTION.format(option=option))
-        if i not in option:
-            continue
-        else:
-            CONFIG['MAIN']['ismaster'] = i
-            save_config()
-            break
+
+    clear()
     return bool(int(i))
 
 
-def show_maps():
+def input_form_update_version():
+    """Show form to upadete script version.
+
+    Return 
+        - True
+            if script has been uptated
+        - False
+            if script has not been uptated
+    """
+    clear()
+    print(TXT_NEW_SCRIPT_VERSION_AVAILABLE)
+    clear()
+    return input(TXT_INPUT).lower() == "y"
+
+
+def form_maps_details():
     """Show to user loaded maps details."""
-    for n, m in enumerate( MAPS ):
+    txt_header = " {map_name} - '{map_filename}"
+    tbody = txt_header + TXT_TRANSFER_INFO
+
+    for m in MAPS:
         if ISMASTER:
-            print("""\
-{} - '{}'
-    FROM ORIGIN (LOCAL MASTER) : {}
-    TO DESTINATION  (S3)       : {}
-""".format( m.get('name'), m.get('filename'), m.get('master'), m.get('s3') ) )
-
+            data = {
+             'origin_info' : 'LOCAL MASTER',
+             'origin_path' : m.get('master'),
+             'destination_info' : 'S3',
+             'destination_path' : m.get('s3'),
+            }
         else:
-            print("""\
-{} - '{}'
-    FROM ORIGIN (S3)             : {}
-    TO DESTINATION (LOCAL SLAVE) : {}
-""".format( m.get('name'), m.get('filename'), m.get('s3'), m.get('slave') ) )
+            data = {
+             'origin_info' : 'S3',
+             'origin_path' : m.get('s3'),
+             'destination_info' : 'LOCAL SLAVE',
+             'destination_path' : m.get('slave'),
+            }
+
+        data['map_name'] = m.get('name')
+        data['map_filename'] = m.get('filename')
+
+        print( tbody.format( **data ) )
+
+    enter_to_continue()
 
 
-def menu():
+def form_menu():
     """Main user interface."""
     global MAPS
 
     while True:
-
         clear()
-
         print(TXT_MODE_INFO .format(
             mode= mode_name(ISMASTER),
-            mapspath=CONFIG[mode_name(ISMASTER)].get("s3_path_mapfiles")))
+            mapspath=CONFIG[mode_name(ISMASTER)].get("maps_s3_path")))
 
         print(TXT_MENU_OPTION.format(mode=mode_name(not ISMASTER)))
 
@@ -543,16 +609,14 @@ def menu():
             break
 
         elif i == "mr":
-            maps = get_maps()
+            maps = get_MAPS()
             if maps : MAPS = maps
 
         elif i == "mo":
-            maps = input_s3path_maps()
-            if maps : MAPS = maps
+            config_maps(exit_while=True)
 
         elif i == "md":
-            show_maps()
-            enter_to_continue()
+            form_maps_details()
 
         elif i == "rh":
             httpd_restart()
@@ -577,118 +641,74 @@ def menu():
 
             for xmap in selected_xmap:
                 transfer(MAPS[xmap])
-
             enter_to_continue()
 
-
-def load_config():
-    """Load configuration and save it in global var CONFIG. 
-    
-    If configiguration file not exists create it with default values.
-    """
-    global CONFIG
-    if not CONFIG.read(CONFIG_FILENAME):
-        CONFIG = default_config()
-        save_config()
+    clear()
 
 
-def default_config():
-    """return default configuration."""
-    config = {}
-    config['MAIN'] = {
-        'reorder_map_elements': True,
-        'skip_delete_alert': False,
-        'ismaster': ''
-        }
-    config[mode_name(True)] = {
-        's3_path_mapfiles': ''
-        }
-    config[mode_name(False)] = {
-        's3_path_mapfiles': ''
-        }
-    return config
+def config_ismaster():
+    global ISMASTER
+    ISMASTER = None
+    while ISMASTER is None:
+        ISMASTER = input_form_ismaster()
+    CONFIG['MAIN']['ismaster'] = str(ISMASTER)
+    save_config()
 
-def save_config():
-    """Save configuration change."""
-    with open(CONFIG_FILENAME, 'w') as configfile:
-        CONFIG.write(configfile)
+def config_maps(exit_while=False):
+    global MAPS
+    maps = None
+    while maps is None:
+        map_s3_path = input_form_maps_s3_path()
+        if map_s3_path is None:
+            if exit_while:
+                break
+        else:
+            maps = load_maps_from_s3_path(map_s3_path)
+            if maps:
+                MAPS = maps
+                CONFIG[mode_name(ISMASTER)]['maps_s3_path'] = map_s3_path
+                save_config()
 
-
-def get_maps():
-    """Return maps. if not exists ask user for insert maps path."""
-    path = CONFIG[mode_name(ISMASTER)].get("s3_path_mapfiles")
-    if path:
-        maps = load_maps_from_s3path(path)
-        if maps:
-            return maps
-
-    # if not exists maps, ask for it
-    return input_s3path_maps()
-
-
-def new_version_availbale():
-    """Check if exists new version of script."""
+def get_ISMASTER():
+    """Set global var ISMASTER from configuration file."""
+    global ISMASTER
     try:
-        f = urllib.request.urlopen(URL_GET_VERSION,timeout=3)
+        # can return None in ismaster not Exists
+        # can return error if th value is not valid boolena string
+        ISMASTER = CONFIG['MAIN'].getboolean('ismaster')
     except:
-        pass
-    else:
-        data = f.read().decode('utf-8')
-        t = [ int(i) for i in __version__.split(".") ]
-        s = [ int(i) for i in data.split(".") ]
-        return s[0] > t[0] or ( s[0] == t[0] and s[1] > t[1] )
+        ISMASTER = None
 
-def update_routine():
-    """Retrive last version of script."""
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    script_path = os.path.join( current_path, "s32s.py" )
-    script_rename = os.path.join( current_path, "s32s.version_{}.py".format(__version__) )
-    os.replace( script_path, script_rename )
-    sleep(2)
-    urllib.request.urlretrieve(URL_SCRIPT, script_path )
-    return True
+def get_MAPS():
+    """Set global var MAPS from configuration file."""
+    global MAPS
+    s3_path = CONFIG[mode_name(ISMASTER)].get("maps_s3_path")
+    if s3_path:
+        MAPS = load_maps_from_s3_path(s3_path)
 
-def update_script():
-    """Return True if downloaded new version of script"""
-    if new_version_availbale():
-        print(" New version of script is available.")
-        i = input("\n > Enter 'y' to upgrade, anything else to skip.").lower()
-        if i == "y":
-            update_routine()
-            return True
-    return False
 
 def main():
     """Main function"""
-    global ISMASTER
-    global MAPS
-
     clear()
 
-    if update_script():
-        print(TXT_DO)
-        print(TXT_RESTART)
-        return
+    if new_version_available():
+        if input_form_update_version():
+            update_routine()
+            return # EXIT TO SCRIPT
 
-
-    clear()
-
+    print(TXT_LOADING.format(what='configuration'))
     load_config()
-    if CONFIG['MAIN'].get('ismaster'):
-        ISMASTER = CONFIG['MAIN'].getboolean('ismaster')
-    else:
-        ISMASTER = input_is_master()
-        clear()
 
-    print(TXT_LOADING_MAPS)
-    maps = get_maps()
-    if maps:
-        MAPS = maps
-        menu()
+    print(TXT_LOADING.format(what='mode'))
+    get_ISMASTER()
+    if ISMASTER is None: config_ismaster()
 
-    else:
-        print(TXT_ERR_CONFIGURATION_FAILS)
-        print(TXT_RESTART)
+    print(TXT_LOADING.format(what='maps'))
+    get_MAPS()
+    if MAPS is None: config_maps()
+            
+    form_menu()
+
 
 
 if __name__ == "__main__":
