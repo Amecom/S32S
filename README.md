@@ -132,14 +132,14 @@ Se espressa questa proprietà deve essere una lista.
 Esempio:
 
 ```
-    {
-      "name": "python script",
-      "description": "OPTIONAL PROJECT DESCRIPTION",
-      "master": "c:/spam/foo",
-      "s3": "bucketname/foo/spam",
-      "slave": "/spam/spam/foo",
-	  "files": ["*__pycache__*", ".*", "*.bmp" ]
-    }
+{
+    "name": "python script",
+    "description": "OPTIONAL PROJECT DESCRIPTION",
+    "master": "c:/spam/foo",
+    "s3": "bucketname/foo/spam",
+    "slave": "/spam/spam/foo",
+	"ignore": ["*__pycache__*", ".*", "*.bmp" ]
+}
 
 ```
 
