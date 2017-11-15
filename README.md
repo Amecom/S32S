@@ -69,6 +69,7 @@ per mappare i percorsi tra master, s3, e slave.
 
 Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
 Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
+
 | Property | Mandatory | Description |
 | --- | --- | --- |
 | `name` | YES | Map name |
