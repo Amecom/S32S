@@ -53,7 +53,7 @@ TXT_MENU_OPTION = """
    x = Exit
 """
 TXT_NEW_SCRIPT_VERSION_AVAILABLE = " New version of script is available.\n Enter 'y' to upgrade, anything else to skip."
-TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {oldscriptname}."
+TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {old_name}."
 TXT_RESTART = " Restart script."
 TXT_MODE_INFO = " *** MODE: {mode} | S3 MAPS PATH: {mapspath} ***"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
@@ -165,7 +165,7 @@ def update_routine():
     os.replace(script_path, script_path_old)
     sleep(2)
     urllib.request.urlretrieve(URL_SCRIPT, script_path)
-    print(TXT_SCRIPT_UPDATED.format(rename_old))
+    print(TXT_SCRIPT_UPDATED.format(old_name=rename_old))
     print(TXT_RESTART)
     enter_to_continue()
     return True
