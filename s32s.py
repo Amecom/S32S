@@ -554,19 +554,6 @@ def input_form_ismaster():
     clear()
     return bool(int(i))
 
-def input_form_update_version():
-    """Show form to upadete script version.
-
-    Return 
-        - True
-            if script has been uptated
-        - False
-            if script has not been uptated
-    """
-    clear()
-    print(TXT_NEW_SCRIPT_VERSION_AVAILABLE)
-    clear()
-    return input(TXT_INPUT).lower() == "y"
 
 def form_transfer(xmap):
     """Transfer data from master to slave
@@ -813,7 +800,8 @@ def main():
     clear()
 
     if new_version_available():
-        if input_form_update_version():
+        print(TXT_NEW_SCRIPT_VERSION_AVAILABLE)
+        if input(TXT_INPUT).lower() == "y":
             update_routine()
             return # EXIT TO SCRIPT
 
