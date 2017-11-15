@@ -37,11 +37,8 @@ come middleware
 
 Occorre quindi creare su Unix un file:
 
-~/.aws/credentials (UNIX)
+~/.aws/credentials
 
-su windwos:
-
-DISK:\Users\USER\.aws
 
 Il cui contenuto è simile questo:
 
@@ -51,7 +48,8 @@ aws_access_key_id = MY_ACCESS_KEY
 aws_secret_access_key = MY_SECRET_KEY
 ```
 
-Per maggiori informazioni a riguardo consultare la guida a BOTO3 offerta da AWS.
+Per maggiori informazioni, compresa la configurazione su altri SO,
+consultare le guide su BOTO3 disponibili online.
 
 # Nota sui percosi AWS S3
 
@@ -190,9 +188,9 @@ time_sleep_after_rm = 3
 
 ```
 
-* skip_order_maps è valore boleano che permette di evitare l'ordinamento automatico dela lista di mappe.
-* skip_delete_alert è valore boleano che permette di nascondere gli avvisi di cancellazione dei dati.
-* skip_tranfer_detail è valore boleano che permette di proseguire senza vedere i dettgali del trasfemento.
+* skip_order_maps è valore bool che permette di evitare l'ordinamento automatico della mappe.
+* skip_delete_alert è valore bool che permette di nascondere gli avvisi di cancellazione dei dati.
+* skip_tranfer_detail è valore bool che permette di proseguire senza vedere i dettgali del trasfemento.
 * time_sleep_after_rm è un valore numerico che rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore.
 
 
