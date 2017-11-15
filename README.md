@@ -1,18 +1,7 @@
 # S32S
 
-S32S gestisce il trasferimento di dati tra computer utilizzando AWS S3
-come middleware e una mappatura di percorsi.
-
-Il computer 'master' copia i file locali su AWS S3
-mentre il computer 'slave' utilizza AWS S3 per recuperare o aggiornare i file.
-
-Flusso degli oggetti:
-
-	MASTER >> S3 >> SLAVE
-
-Dato che i computer MASTER e SLAVE non cominucano direttamente tra loro
-è possibile utilizzare lo script solo in modalità MASTER per effeture una copia dei dati
-o solo in modalità SLAVE per caricare o aggiornare i dati di un server.
+Script Python3 per gestire trasferimenti di dati tra computer utilizzando AWS S3
+come middleware e mappature di percorsi.
 
 
 ## ATTENZIONE
@@ -28,14 +17,31 @@ Si consiglia:
 - Prestare molta attenzione ai messaggi di alert che il programma fornisce.
 - Avere chiaro cosa si sta facendo e quali sono le conseguenze.
 
+## Flusso oggetti:
+
+Il computer 'master' copia i file locali su AWS S3
+mentre il computer 'slave' utilizza S3 per recuperare o aggiornare i file.
+
+	MASTER >> S3 >> SLAVE
+
+Dato che i computer MASTER e SLAVE non cominicano direttamente tra loro
+è possibile utilizzare lo script anche solo in modalità MASTER o anche solo in modalità SLAVE.
+
 ## Requisiti
 
-Il programma è stato testato con Python 3.6.
+Testato con Python 3.6.
 
-Affinche il programma funzioni
-è necessario fornire alla libreria BOTO3 inclusa nel codice 
-le credenziali di accesso allo storage AWS S3 che si sta utilizzando 
-come middleware
+Libreria esterne
+
+[Boto3](https://github.com/boto/boto3)
+
+```
+$ pip install boto3
+```
+
+È necessario configurare le credenziali di accesso allo storage S3 
+che si utilizza come middleware 
+per utilizzare la libreria BOTO3 inclusa nel codice .
 
 Occorre quindi creare un file ```~/.aws/credentials```
 il cui contenuto è simile a questo:
