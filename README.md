@@ -37,12 +37,8 @@ Affinche il programma funzioni
 le credenziali di accesso allo storage AWS S3 che si sta utilizzando 
 come middleware
 
-Occorre quindi creare su Unix un file:
-
-~/.aws/credentials
-
-
-Il cui contenuto è simile questo:
+Occorre quindi creare un file ```~/.aws/credentials```
+il cui contenuto è simile a questo:
 
 ```
 [default]
@@ -57,12 +53,13 @@ consultare le guide su BOTO3 disponibili online.
 
 Nelle librerie che utilizzano AWS S3 solitamente ci si riferisce 
 a un oggetto specificando separatamente
-il nome del 'bucket' e un 'prefix'.
-
+il nome del 'bucket' e un 'prefix'. 
 In questo programma nei file di configurazione e negli input utente
-quando ci si riferisce a un **percorso S3 si intende 
-una stringa unica composta dal nome del bucket e dal prefix
-uniti dal carattere '/'** ovvero NOMEBUCKET/PREFIX. 
+quando ci si riferisce a un **percorso S3 intende 
+una stringa composta dal nome del bucket e dal prefix
+uniti dal carattere '/'** esempio `NOMEBUCKET/PREFIX`. 
+
+
 
 # File di mappatura
 
