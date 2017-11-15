@@ -31,17 +31,17 @@ Si consiglia:
 Il programma è stato testato con Python 3.6.
 
 Affinche il programma funzioni
-è necessario fornire alla libreria inclusa nel codice BOTO3
+è necessario fornire alla libreria BOTO3 inclusa nel codice 
 le credenziali di accesso allo storage AWS S3 che si sta utilizzando 
 come middleware
 
-Occorre quindi creare il file in unix un file:
+Occorre quindi creare su Unix un file:
 
 ~/.aws/credentials (UNIX)
 
-o su windwos un file
+su windwos:
 
-[DISK]:\Users\[USER]\.aws
+DISK:\Users\USER\.aws
 
 Il cui contenuto è simile questo:
 
@@ -61,12 +61,12 @@ il nome del 'bucket' e un 'prefix'.
 
 In questo programma nei file di configurazione e negli input utente
 quando ci si riferisce a un percorso S3 si intende 
-una stringa unica composta dal nome del bucket unita al prefix dell'oggetto
+una stringa unica composta dal nome del bucket e dal prefix
 uniti dal carattere '/' ovvero NOMEBUCKET/PREFIX. 
 
 # File di mappatura
 
-Il programma richiede uno o più file con estensione .json 
+Il programma richiede almeno un file con estensione .json 
 per mappare i percorsi tra master, s3, e slave.
 
 Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
@@ -75,9 +75,9 @@ Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dal
 1) 'name', obbligatorio. 
 2) 'description', facoltativo. 
 3) 's3', obbligatoro. Indica il percorso S3 dove verranno salvati o recuperati i file. 
-4) 'master', necessaria solo quando lo script viene eseguito in modalità master.
+4) 'master', necessario solo quando lo script viene eseguito in modalità master.
 Indica la directory che contiene i file originali che verranno caricati sul percorso S3.
-5) 'slave' è necessaria solo quando lo script viene eseguito in modalità slave.
+5) 'slave' è necessario solo quando lo script viene eseguito in modalità slave.
 Indica la directory in cui i file verranno copiati recuperandoli dal percorso S3.
 
 Esempio file 'mainmap.json':
@@ -127,7 +127,7 @@ dovranno essere salvati in un percorso S3.
 
 Quindi creo un percorso in:
 
-`bucketname/s32s/foo/maps`
+`bucketname/spam/foo/maps`
 
 sul quale carico il file 'mainmap.json'.
 
@@ -170,8 +170,7 @@ MASTER che SLAVE. In questo caso è possibile specificare due differenti percors
 dei file di mappatura, uno per la modalità MASTER e uno per la modalità SLAVE.
 
 Utilizzare una stessa mappatura nelle due modalità
-non solo non avrebbe senso e sarebbe sbagliato
-ma anche potenzialmente pericoloso per i proprio dati.
+non solo non ha senso ma anche potenzialmente pericoloso per i proprio dati.
 
 
 # File 's32s.ini'
@@ -191,10 +190,10 @@ time_sleep_after_rm = 3
 
 ```
 
-skip_order_maps è valore boleano che permette di evitare l'ordinamento automatico dela lista di mappe.
-skip_delete_alert è valore boleano che permette di nascondere gli avvisi di cancellazione dei dati.
-skip_tranfer_detail è valore boleano che permette di proseguire senza vedere i dettgali del trasfemento.
-time_sleep_after_rm è un valore numerico che rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore.
+* skip_order_maps è valore boleano che permette di evitare l'ordinamento automatico dela lista di mappe.
+* skip_delete_alert è valore boleano che permette di nascondere gli avvisi di cancellazione dei dati.
+* skip_tranfer_detail è valore boleano che permette di proseguire senza vedere i dettgali del trasfemento.
+* time_sleep_after_rm è un valore numerico che rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore.
 
 
 
