@@ -69,7 +69,7 @@ per mappare i percorsi tra master, s3, e slave.
 
 Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
 Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
-| Property | Mandatory | Description
+| Property | Mandatory | Description |
 | --- | --- | --- |
 | `name` | YES | Map name |
 | `description` | NO  | Map description |
@@ -121,9 +121,9 @@ non verrà creata, e gli altri file contenuti nella directory verranno conservat
 Ogni oggetto mappatura può contentere la proprietà ignore.
 Se espressa questa proprietà deve essere una lista.
 
-È possbile utilizzare i caratteri jolly in questo modo
+È possbile utilizzare il carattere jolly '*' in questo modo:
 
-| String | Description |
+| Examples | Description |
 | --- | --- |
 | `string*` | esclude i percorsi che iniziano con 'string |
 | `*string*`| esclude i percorsi che contengono 'string |
