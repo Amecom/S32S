@@ -15,18 +15,20 @@ Dato che i computer MASTER e SLAVE non cominucano direttamente tra loro
 o solo in modalità SLAVE per caricare o aggiornare i dati di un server.
 
 
-# ATTENZIONE
-Il programma include routine che eliminano intere directory da un computer SLAVE
+## ATTENZIONE
+
+Il programma include **routine che eliminano intere directory** da un computer SLAVE
 e dal bucket AWS S3 di cui si fornisce l'accesso. 
 L'autore non è responsabile di eventuali perdite di dati causati
 dall'uso, dalla modifica o da errori del programma.
 
 Si consiglia:
-1) Eseguire sempre delle copie di backup dei dati importanti. 
-2) Prestare molta attenzione ai messaggi di alert che il programma fornisce.
-3) Avere chiaro cosa si sta facendo e quali sono le conseguenze.
 
-# Requisiti
+- Eseguire sempre delle copie di backup dei dati importanti. 
+- Prestare molta attenzione ai messaggi di alert che il programma fornisce.
+- Avere chiaro cosa si sta facendo e quali sono le conseguenze.
+
+## Requisiti
 
 Il programma è stato testato con Python 3.6.
 
@@ -51,16 +53,16 @@ aws_secret_access_key = MY_SECRET_KEY
 Per maggiori informazioni, compresa la configurazione su altri SO,
 consultare le guide su BOTO3 disponibili online.
 
-# Nota sui percosi AWS S3
+## Nota sui percosi AWS S3
 
 Nelle librerie che utilizzano AWS S3 solitamente ci si riferisce 
 a un oggetto specificando separatamente
 il nome del 'bucket' e un 'prefix'.
 
 In questo programma nei file di configurazione e negli input utente
-quando ci si riferisce a un percorso S3 si intende 
+quando ci si riferisce a un **percorso S3 si intende 
 una stringa unica composta dal nome del bucket e dal prefix
-uniti dal carattere '/' ovvero NOMEBUCKET/PREFIX. 
+uniti dal carattere '/'** ovvero NOMEBUCKET/PREFIX. 
 
 # File di mappatura
 
