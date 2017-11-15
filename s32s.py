@@ -11,7 +11,7 @@ import errno
 import botocore.exceptions
 from time import sleep
 
-__version__ = "1.1"
+__version__ = "1.2"
 os.sep = "/"
 
 S3RESOURCE = boto3.resource('s3')
@@ -64,6 +64,8 @@ TXT_LOADING = " Loading '{what}'... "
 TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_DELETE_OBJECT = " {storage} DELETE: {object}"
 TXT_CREATE_OBJECT = " {storage} CREATE: {object}"
+TXT_TRANSFER_IGNORE = " {storage} IGNORE: {object}"
+
 TXT_INPUT = "\n > Enter input: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
 TXT_INPUT_ENTER = "\n > Press ENTER to continue..."
@@ -104,7 +106,7 @@ def clear():
 
 def validate_config():
     save = False
-    for var in ("skip_order_maps", "skip_delete_alert", "skip_tranfer_detail"  ):
+    for var in ("skip_order_maps", "skip_delete_alert", "skip_tranfer_detail"):
         try:
             CONFIG['MAIN'].getboolean(var)
         except:
@@ -310,7 +312,7 @@ def rm_pc_object(object_path, ignore_error=False):
     elif os.path.isfile(object_path):
         os.remove(object_path)
     # waiting for system complete task
-    sleep(int( CONFIG['MAIN'].get('time_sleep_after_rm')))
+    sleep(int(CONFIG['MAIN'].get('time_sleep_after_rm')))
     return True
 
 def rm_s3_object(object_path, ignore_error=False):
@@ -404,7 +406,7 @@ def load_maps_from_s3_path(s3_path):
         try:
             validate_maps(xmap)
         except Exception as e:
-            print(e)
+            print(e, "load_maps_from_s3_path")
             enter_to_continue()
         else:
             maps += xmap
@@ -590,7 +592,8 @@ def form_transfer(xmap):
                 return 0
 
             print(TXT_CREATE_OBJECT.format(storage=destination_info['location'], object=destination))
-            # need add '/' to 'mk_slave_object' destination because external path
+            # need add '/' to 'mk_slave_object' destination because external
+            # path
             # don't have
             if not mk_slave_object(destination + "/"):
                 print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
@@ -629,6 +632,9 @@ def form_transfer(xmap):
     objects = xmap.get('files')
     # if not objects, get all objects in origin path.
     if objects: 
+        # specified file
+        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
+        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
         delete_main_dir = False
     else:
         delete_main_dir = True
@@ -639,15 +645,34 @@ def form_transfer(xmap):
         destination_info = (destination_info['location'], destination_info['name']),
         destination_path = destination))
 
+    # create ignore rule
+    ignore = xmap.get("ignore")
+    if ignore:
+        ignore_startswith = []
+        ignore_endswith = []
+        ignore_contains = []
+        for rules in ignore:
+            r = rules.strip()
+            endsw = r[0] == "*"
+            startsw = r[-1] == "*"
+            if startsw and endsw:
+                ignore_contains.append(r[1:-1])
+            elif startsw:
+                ignore_startswith.append(r[:-1])
+            elif endsw:
+                ignore_endswith.append(r[1:])
+
     initialize = False
     for obj in objects:
 
         obj_data = None if obj.endswith("/") else get_master_file("/".join([origin, obj]))
-        obj_path = "/".join([destination, obj])
+        obj_fullpath = "/".join([destination, obj])
 
         if not initialize:
-            # posticipate _create_slave_environment to not remove local slave folder until
-            # object relly exists: objects is generator, don't give error until first access
+            # posticipate _create_slave_environment to not remove local slave
+            # folder until
+            # object relly exists: objects is generator, don't give error until
+            # first access
             initialize = True
             if delete_main_dir:
                 if not _create_slave_environment():
@@ -655,12 +680,31 @@ def form_transfer(xmap):
                     break
 
 
-        print(TXT_CREATE_OBJECT.format(storage=destination_info['location'], object=obj_path))
-
         # nella modalita dove sono specificati i singoli file
         # non è permesso sincronizzare il contenuto di una directory
-        if not delete_main_dir and not obj_data:
-            if not mk_slave_object(obj_path, obj_data):
+        #if not delete_main_dir and not obj_data:
+
+        # TEST IGNORE FILE
+        ignore_this_files = False
+        if ignore:
+            for rules in ignore_contains:
+                ignore_this_files = obj.find(rules) > -1
+                break
+
+            if not ignore_this_files:
+                for rules in ignore_startswith:
+                    ignore_this_files = obj.startswith(rules)
+                    break
+            if not ignore_this_files:
+                for rules in ignore_endswith:
+                    ignore_this_files = obj.endswith(rules)
+                    break
+
+        if ignore_this_files:
+            print(TXT_TRANSFER_IGNORE.format(storage=destination_info['location'], object=obj))
+        else:
+            print(TXT_CREATE_OBJECT.format(storage=destination_info['location'], object=obj))
+            if not mk_slave_object(obj_fullpath, obj_data):
                 print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
                 break
 
