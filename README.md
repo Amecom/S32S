@@ -77,6 +77,7 @@ Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dal
 Indica la directory che contiene i file originali che verranno caricati sul percorso S3.
 5) 'slave' è necessario solo quando lo script viene eseguito in modalità slave.
 Indica la directory in cui i file verranno copiati recuperandoli dal percorso S3.
+6) 'ignore', facoltativo, lista di regole di esclusione dei file.
 
 Esempio file 'mainmap.json':
 ```
@@ -117,6 +118,30 @@ perdendo quindi tutti i file precedentemente contenuti.
 2) Quando viene specificata una lista di files allora la directory di destinazione deve esistere,
 non verrà creata, e gli altri file contenuti nella directory verranno conservati.
 
+# Direttiva ignore
+Ogni oggetto mappatura può contentere la proprietà ignore.
+Se espressa questa proprietà deve essere una lista.
+
+È possbile utilizzare i caratteri jolly in questo modo
+
+```
+	"string*"  = esclude i percorsi che iniziano con 'string
+	"*string*" = esclude i percorsi che contengono 'string
+	"*string"  = esclude i percorsi che finiscono con 'string
+```
+Esempio:
+
+```
+    {
+      "name": "python script",
+      "description": "OPTIONAL PROJECT DESCRIPTION",
+      "master": "c:/spam/foo",
+      "s3": "bucketname/foo/spam",
+      "slave": "/spam/spam/foo",
+	  "files": ["*__pycache__*", ".*", "*.bmp" ]
+    }
+
+```
 
 # Utilizzo dei percorsi di mappatura
 
