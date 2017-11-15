@@ -69,15 +69,14 @@ per mappare i percorsi tra master, s3, e slave.
 
 Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
 Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
-
-1) 'name', obbligatorio. 
-2) 'description', facoltativo. 
-3) 's3', obbligatoro. Indica il percorso S3 dove verranno salvati o recuperati i file. 
-4) 'master', necessario solo quando lo script viene eseguito in modalità master.
-Indica la directory che contiene i file originali che verranno caricati sul percorso S3.
-5) 'slave' è necessario solo quando lo script viene eseguito in modalità slave.
-Indica la directory in cui i file verranno copiati recuperandoli dal percorso S3.
-6) 'ignore', facoltativo, lista di regole di esclusione dei file.
+| Property | Mandatory | Description
+| --- | --- | --- |
+| `name` | YES | Map name |
+| `description` | NO  | Map description |
+| `s3` | YES | Indica il percorso S3 dove verranno salvati o recuperati i file. |
+| `master` | IF MASTER | Directory che contiene i file originali che verranno caricati sul percorso S3. |
+| `slave` | IF SLAVE | Directory in cui i file verranno copiati recuperandoli dal percorso S3. |
+| `ignore` | NO | Regole di esclusione dei percorsi. |
 
 Esempio file 'mainmap.json':
 ```
@@ -124,11 +123,12 @@ Se espressa questa proprietà deve essere una lista.
 
 È possbile utilizzare i caratteri jolly in questo modo
 
-```
-	"string*"  = esclude i percorsi che iniziano con 'string
-	"*string*" = esclude i percorsi che contengono 'string
-	"*string"  = esclude i percorsi che finiscono con 'string
-```
+| String | Description |
+| --- | --- |
+| `string*` | esclude i percorsi che iniziano con 'string |
+| `*string*`| esclude i percorsi che contengono 'string |
+| `*string` | esclude i percorsi che finiscono con 'string |
+
 Esempio:
 
 ```
@@ -212,11 +212,12 @@ skip_tranfer_detail = False
 time_sleep_after_rm = 3
 
 ```
-
-* skip_order_maps è valore bool che permette di evitare l'ordinamento automatico della mappe.
-* skip_delete_alert è valore bool che permette di nascondere gli avvisi di cancellazione dei dati.
-* skip_tranfer_detail è valore bool che permette di proseguire senza vedere i dettgali del trasfemento.
-* time_sleep_after_rm è un valore numerico che rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore.
+| Var | Type | Descrizione |
+| --- | --- | --- |
+| `skip_order_maps` | bool | Permette di evitare l'ordinamento automatico della mappe. |
+| `skip_delete_alert` | bool | Permette di nascondere gli avvisi di cancellazione dei dati. |
+| `skip_tranfer_detail` | bool | Permette di proseguire senza vedere i dettgali del trasfemento. |
+| `time_sleep_after_rm` | int | Rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore. |
 
 
 
