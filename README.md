@@ -1,12 +1,10 @@
 # S32S
 
+S32S gestisce il trasferimento di dati tra computer utilizzando AWS S3
+come middleware e una mappatura di percorsi.
 
-S32S semplifica i trasferimenti di dati 
-tra computer attraverso AWS S3 come middleware e percorsi mappati.
-
-Il programma può essere utilizzato in modalità 'master' o 'slave'.
 Il computer 'master' copia i file locali su AWS S3
-mentre il computer 'slave' utilizza AWS S3 per recuperare/aggiornare i file.
+mentre il computer 'slave' utilizza AWS S3 per recuperare o aggiornare i file.
 
 Flusso degli oggetti:
 
@@ -16,30 +14,34 @@ Dato che i computer MASTER e SLAVE non cominucano direttamente tra loro
 è possibile utilizzare lo script solo in modalità MASTER per effeture una copia dei dati
 o solo in modalità SLAVE per caricare o aggiornare i dati di un server.
 
+
 # ATTENZIONE
+Il programma include routine che eliminano intere directory da un computer SLAVE
+e dal bucket AWS S3 di cui si fornisce l'accesso. 
 L'autore non è responsabile di eventuali perdite di dati causati
 dall'uso, dalla modifica o da errori del programma.
 
-Il programma include routine che eliminano intere directory dal computer su cui viene eseguito
-e su bucket AWS S3 di cui si fornisce l'accesso. 
-
-Si prega di:
-
-1) Tenere presente che il programma è una BETA e potrebbe contenere dei bug.
+Si consiglia:
+1) Eseguire sempre delle copie di backup dei dati importanti. 
 2) Prestare molta attenzione ai messaggi di alert che il programma fornisce.
-3) Avere ben chiaro cosa si sta facendo e quali sono le conseguenze.
-
-Si consiglia di eseguire delle copie di backup dei dati su cui si lavora. 
+3) Avere chiaro cosa si sta facendo e quali sono le conseguenze.
 
 # Requisiti
 
 Il programma è stato testato con Python 3.6.
 
-È necessario disporre di credenziali di accesso allo storage AWS S3
-e configurare il computer per l'utilizzo della libreria BOTO3
-tramite la creazione del file:
+Affinche il programma funzioni
+è necessario fornire alla libreria inclusa nel codice BOTO3
+le credenziali di accesso allo storage AWS S3 che si sta utilizzando 
+come middleware
 
-~/.aws/credentials
+Occorre quindi creare il file in unix un file:
+
+~/.aws/credentials (UNIX)
+
+o su windwos un file
+
+[DISK]:\Users\[USER]\.aws
 
 Il cui contenuto è simile questo:
 
@@ -53,54 +55,30 @@ Per maggiori informazioni a riguardo consultare la guida a BOTO3 offerta da AWS.
 
 # Nota sui percosi AWS S3
 
-In AWS S3 solitamente ci si riferisce 
-a un oggetto o un percorso specificando separatamente
-il nome del 'bucket' e un 'prefix' o 'key'.
+Nelle librerie che utilizzano AWS S3 solitamente ci si riferisce 
+a un oggetto specificando separatamente
+il nome del 'bucket' e un 'prefix'.
 
-Per semplificare in questo programma, nei file di configurazione, e nella documentazione
-quando ci si riferisce a un percorso su AWS S3 si intende 
-un stringa unica composta da NOMEBUCKET/PREFIX. 
+In questo programma nei file di configurazione e negli input utente
+quando ci si riferisce a un percorso S3 si intende 
+una stringa unica composta dal nome del bucket unita al prefix dell'oggetto
+uniti dal carattere '/' ovvero NOMEBUCKET/PREFIX. 
 
-# Installazione dello script
+# File di mappatura
 
-Per installare sul server lo script è sufficiente scaricare il file:
+Il programma richiede uno o più file con estensione .json 
+per mappare i percorsi tra master, s3, e slave.
 
-```
-$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
-```
+Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
+Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
 
-Al primo avvio lo script crea un file di configurazione chiamato 's32s.cf'.
-
-Nota: il fatto che il percorso del file contenga la parola master è una coincidenza che nulla
-ha a che vedere con il concetto di 'master' e 'slave' discusso fino ad ora. :)
-
-# Creazione dei percorsi di mappatura
-
-Perchè lo script possa essere utilizzato è necessario creare uno, o più file,
-contenenti le informazioni di mappatura dei percorsi e dare a queste 'mappature'
-un nome. Un file di mappatura è un file JSON che contiene una lista di mappature.
-
-Ogni mappatura è un dizionario con i percorsi di mappatura.
-
-I PERCORSI DI MAPPATURA SONO DIRECTORY NON DEI FILE.
-
-Una mappatura contiene una percorso 'master' ovvero la directory che contiene
-i file originali, un percorso 's3' ovvero dove il bucket/prefix dove verranno 
-trasferiti i file e un percorso 'slave' ovvero la directory in cui i file 
-verranno copiati recuperandoli dal percorso S3.
-
-In dizionario di mappatura:
-la proprietà 'name' è obbligatoria. 
-la proprietà 'description' è facoltativa. 
-la proprietà 's3' è obbligatoria. 
-la proprietà 'master' è necessaria solo quando lo script viene eseguito in modalità master.
-la proprietà 'slave' è necessaria solo quando lo script viene eseguito in modalità slave.
-la proprietà 'object' è facoltativa.
-
-
-Dovrebbe essere evidente che il percorso su AWS S3 è condiviso sia dal computer master che slave
-mentre i percorsi locali possono cambiare.
-
+1) 'name', obbligatorio. 
+2) 'description', facoltativo. 
+3) 's3', obbligatoro. Indica il percorso S3 dove verranno salvati o recuperati i file. 
+4) 'master', necessaria solo quando lo script viene eseguito in modalità master.
+Indica la directory che contiene i file originali che verranno caricati sul percorso S3.
+5) 'slave' è necessaria solo quando lo script viene eseguito in modalità slave.
+Indica la directory in cui i file verranno copiati recuperandoli dal percorso S3.
 
 Esempio file 'mainmap.json':
 ```
@@ -118,28 +96,34 @@ Esempio file 'mainmap.json':
       "master": "c:/path/dir/master/2",
       "s3": "bucketname/dir/dir/dir",
       "slave": "/path/slave/dir2",
-	  "objects": ["filename_1", "filename_2"]
+	  "files": ["filename_1", "filename_2"]
     }
 ]
 ```
 
-In questo esempio ho creato un file chiamato "mainmap.json" che contiene due mappature chiamate
+In questo esempio il file chiamato "mainmap.json" contiene due mappature chiamate
 'PROJECT 1' e 'PROJECT 2'.
 
-In 'PROJECT 2' tramite la proprietà 'objects'
-sono specificati i file che si vuole copiare, mentre in 'PROJECT 1'
-verranno sincronizzati tutti i file e le directory presenti nel percorso master su S3
-e tutti i file presenti nel percorso S3 su slave.
+'PROJECT 1' sincronizza tutti i file e le directory presenti nel percorso MASTER
+sul percorso S3 e dal percorso S3 su SLAVE.
 
-ATTENZIONE: 
-Durante la copia dei dati da un repository a un altro
-se la directory di destinazione esiste verrà cancellata
-e ricreata quindi i vecchi file verranno cancellati.
+'PROJECT 2' tramite la proprietà 'files'
+specifica i file che si vuole copiare.
+
+IMPORTANTE:
+
+1) Quando viene specificato solo il percorso della directory allora
+la directory di destinazione se non esiste verrà creata ma se esiste verrà cancellata e ricreata
+perdendo quindi tutti i file precedentemente contenuti.
+
+2) Quando viene specificata una lista di files allora la directory di destinazione deve esistere,
+non verrà creata, e gli altri file contenuti nella directory verranno conservati.
+
 
 # Utilizzo dei percorsi di mappatura
 
 I file di mappatura devono essere condivisi tra computer master e slave per questo motivo
-dovranno essere salvati in un percorso AWS S3.
+dovranno essere salvati in un percorso S3.
 
 Quindi creo un percorso in:
 
@@ -147,11 +131,27 @@ Quindi creo un percorso in:
 
 sul quale carico il file 'mainmap.json'.
 
-Quando il programma mi chiede di inserire il percorso dei file di mappatura
-devo inserire il percorso della directory ovvero `bucketname/s32s/foo/maps`
-e non il percorso del file `bucketname/s32s/foo/maps/mainmap.json`
+Quando il programma chiede di inserire il percorso dei file di mappatura
+è possibile inserire il percorso S3 di un singolo file, o il percorso S3 di una directory
+nella quale posso inserire più file di mappatura.
 
-È possibile inserire più file di mappature in un percorso S3.
+# Installazione dello script
+
+Per utilizzare il programma è sufficiente scaricare il file:
+
+```
+$ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
+```
+
+Al primo avvio verrà creato un file di configurazione chiamato 's32s.ini'.
+
+Il programma deve essere installato in modalità MASTER sul computer master 
+e in modalità SLAVE sul computer slave.
+
+La sincronizzazione dei dati è manuale, quindi quando si vuole aggiornare
+i dati da master a S3 bisognarà richiederne l'upload dal computer master così come 
+quando si vuole scaricare i dati aggiornati bisognerà richiederne
+il download dal computer slave .
 
 
 
@@ -159,25 +159,42 @@ e non il percorso del file `bucketname/s32s/foo/maps/mainmap.json`
 
 La prima volta che lo script viene eseguito verrà chiesto di:
 
-1) configurare il computer come master o slave.
-2) inserire il percorso S3 dei files di mappatura
-
-In caso di errore verificare che sia abbia accesso a AWS S3 tramite BOTO3
-e di avere le autorizzazioni di accesso sulle directory locali su cui si vuole lavorare.
+1) Configurare il computer come master o slave.
+2) Inserire il percorso S3 del file di mappatura o della direcory contenente più file di mappatura.
 
 
 # Esecuzione contemporanea della modalità MASTER e SLAVE
 
 Il programma può essere utilizzato in uno stesso computer sia in modalità
 MASTER che SLAVE. In questo caso è possibile specificare due differenti percorsi S3
-dei file di mappatura uno per la modalità MASTER e uno per la modalità SLAVE.
+dei file di mappatura, uno per la modalità MASTER e uno per la modalità SLAVE.
 
 Utilizzare una stessa mappatura nelle due modalità
 non solo non avrebbe senso e sarebbe sbagliato
 ma anche potenzialmente pericoloso per i proprio dati.
 
 
-# File 's32s.cf'
+# File 's32s.ini'
+
+Da un utente iniziale il file di configurazione non dovrebbe modificato.
+Utenti più esperti possono modificarlo per disattivare
+alcune funzionalità di controllo che rallentano l'esecuzione dei task di upload e download.
+
+Tra le opzioni che è possibile modificare manualmente
+all'interno del nodo [MAIN] del file cofing.ini troviamo:
+```
+[MAIN]
+skip_order_maps = False
+skip_delete_alert = False
+skip_tranfer_detail = False
+time_sleep_after_rm = 3
+
+```
+
+skip_order_maps è valore boleano che permette di evitare l'ordinamento automatico dela lista di mappe.
+skip_delete_alert è valore boleano che permette di nascondere gli avvisi di cancellazione dei dati.
+skip_tranfer_detail è valore boleano che permette di proseguire senza vedere i dettgali del trasfemento.
+time_sleep_after_rm è un valore numerico che rappresenta il numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore.
 
 
 
