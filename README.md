@@ -108,7 +108,7 @@ sul percorso S3 e dal percorso S3 su SLAVE.
 'PROJECT 2' tramite la proprietà 'files'
 specifica i file che si vuole copiare.
 
-IMPORTANTE:
+## IMPORTANTE:
 
 1) Quando viene specificato solo il percorso della directory allora
 la directory di destinazione se non esiste verrà creata ma se esiste verrà cancellata e ricreata
@@ -117,7 +117,7 @@ perdendo quindi tutti i file precedentemente contenuti.
 2) Quando viene specificata una lista di files allora la directory di destinazione deve esistere,
 non verrà creata, e gli altri file contenuti nella directory verranno conservati.
 
-# Direttiva ignore
+## Direttiva ignore
 Ogni oggetto mappatura può contentere la proprietà ignore.
 Se espressa questa proprietà deve essere una lista.
 
@@ -143,9 +143,9 @@ Esempio:
 
 ```
 
-# Utilizzo dei percorsi di mappatura
+## Utilizzo del file di mappatura
 
-I file di mappatura devono essere condivisi tra computer master e slave per questo motivo
+Il file di mappatura deve essere condiviso tra computer master e slave per questo motivo
 dovranno essere salvati in un percorso S3.
 
 Quindi creo un percorso in:
@@ -157,6 +157,7 @@ sul quale carico il file 'mainmap.json'.
 Quando il programma chiede di inserire il percorso dei file di mappatura
 è possibile inserire il percorso S3 di un singolo file, o il percorso S3 di una directory
 nella quale posso inserire più file di mappatura.
+
 
 # Installazione dello script
 
@@ -176,8 +177,6 @@ i dati da master a S3 bisognarà richiederne l'upload dal computer master così 
 quando si vuole scaricare i dati aggiornati bisognerà richiederne
 il download dal computer slave .
 
-
-
 # Esecuzione dello script
 
 La prima volta che lo script viene eseguito verrà chiesto di:
@@ -186,7 +185,7 @@ La prima volta che lo script viene eseguito verrà chiesto di:
 2) Inserire il percorso S3 del file di mappatura o della direcory contenente più file di mappatura.
 
 
-# Esecuzione contemporanea della modalità MASTER e SLAVE
+## Esecuzione contemporanea della modalità MASTER e SLAVE
 
 Il programma può essere utilizzato in uno stesso computer sia in modalità
 MASTER che SLAVE. In questo caso è possibile specificare due differenti percorsi S3
