@@ -5,14 +5,14 @@ come middleware e mappature di percorsi.
 
 Il computer MASTER trasferisce i file locali su AWS S3
 mentre il computer SLAVE recupera e salva localmente i file presenti su AWS S3.
-Il trasferimento dei dati tra repository è manuale.
+La sincronizzazione dei dati non è automatica ma a comando.
 
 ## Flusso dati
 
 ```
-MASTER	>>	S3	>>	SLAVE
+MASTER >> S3 >> SLAVE
 
-ORIGINALE	>>	REPOSITORY	>>	COPIA
+ORIGINALE >> REPOSITORY >> COPIA
 ```
 
 ## ATTENZIONE
@@ -93,8 +93,7 @@ consultare le [guida BOTO3](https://github.com/boto/boto3).
 
 ## Creare un file di mappatura
 
-Il programma richiede almeno un file con estensione .json 
-per mappare i percorsi tra master, s3, e slave.
+Il programma richiede almeno un file con informazioni dei percorsi master, S3, e slave.
 
 Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
 Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
@@ -133,8 +132,8 @@ Esempio file 'mainmap.json':
 In questo esempio il file chiamato "mainmap.json" contiene due mappature chiamate
 'PROJECT 1' e 'PROJECT 2'.
 
-- 'PROJECT 1' sincronizza tutti i file e le directory presenti nel percorso MASTER
-sul percorso S3 e dal percorso S3 su SLAVE. Contiene inoltre delle direttive 'ignore'
+- 'PROJECT 1' sincronizza tutti i file e le directory presenti nella directory MASTER
+sul percorso S3 e dal percorso S3 sula directory SLAVE. Contiene inoltre delle direttive 'ignore'
 per escludere degli oggetti durante il trasferimento.
 
 - 'PROJECT 2' tramite la proprietà 'files' specifica i file che si vuole copiare.
@@ -181,13 +180,13 @@ Se espressa questa proprietà deve essere una lista.
 NOTA. Il carattere jolly non agisce sul nome del file ma sul percorso relativo
 alla directory principale. Esempio se la direcotry 'master' nel file di mappatura è `/data/foo`
 ed esiste un file `/data/foo/spam/dir/picure.jpg`, la direttiva ignore viene applicata
-alla stringa `dir/picture.jpg` e NON a `picture.jpg` o `/dir/picture.jpg`.
+alla stringa `spam/dir/picture.jpg` e NON a `picture.jpg` o `/spam/dir/picture.jpg`.
 
 ## Esecuzione contemporanea della modalità MASTER e SLAVE
 
 Il programma può essere utilizzato in uno stesso computer sia in modalità
-MASTER che SLAVE. In questo caso è possibile specificare due differenti percorsi S3
-dei file di mappatura, uno per la modalità MASTER e uno per la modalità SLAVE.
+MASTER che SLAVE. In questo caso è possibile (e necessario) 
+specificare un file di mappatura per la modalità MASTER e uno per la modalità SLAVE.
 
 Utilizzare una stessa mappatura nelle due modalità
 non solo non ha senso ma anche pericoloso per i proprio dati.
@@ -202,9 +201,9 @@ Nel nodo [MAIN] del file s32s.ini troviamo:
 
 | Var | Type | Descrizione |
 | --- | --- | --- |
-| `skip_order_maps` | bool | Evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
-| `skip_delete_alert` | bool | True nasconde gli avvisi di cancellazione dei dati. |
-| `skip_tranfer_detail` | bool | True permette di nascondere i dettagli del trasfemento. |
+| `skip_order_maps` | bool | True evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
+| `skip_delete_alert` | bool | True nasconde gli alert di cancellazione dei dati. |
+| `skip_tranfer_detail` | bool | True nasconde il riepilogo del trasfemento. |
 | `time_sleep_after_rm` | int | Numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task di elminazione di una directory. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore. |
 
 
