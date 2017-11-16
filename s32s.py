@@ -45,7 +45,6 @@ Select run mode:
 """
 TXT_MENU_OPTION = """
  Options:
-
   md = Maps Details
   mr = Maps Reload
   mo = Maps Open
@@ -56,6 +55,7 @@ TXT_NEW_SCRIPT_VERSION_AVAILABLE = " New version of script is available.\n Enter
 TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {old_name}."
 TXT_RESTART = " Restart script."
 TXT_MODE_INFO = " *** MODE: {mode} | S3 MAPS PATH: {mapspath} ***"
+TXT_EXECUTE_CMD = " EXCUTE: {cmd}"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
 TXT_ACTION_SLAVE = "Replace local objects with those stored in S3"
 TXT_NOTDO = " Nothing done!"
@@ -64,7 +64,8 @@ TXT_LOADING = " Loading '{what}'... "
 TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_DELETE_OBJECT = " {storage} DELETE: {object}"
 TXT_CREATE_OBJECT = " {storage} CREATE: {object}"
-TXT_TRANSFER_IGNORE = " {storage} IGNORE: {object}"
+TXT_TRANSFER_IGNORE = " \t{storage} IGNORE: {object}"
+TXT_CUSTOM_CMD_LABEL = " Custom Command"
 
 TXT_INPUT = "\n > Enter input: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
@@ -138,6 +139,7 @@ def load_default_config():
     CONFIG[mode_name(False)] = {
         'maps_s3_path': ''
         }
+    CONFIG['CUSTOMCOMMAND'] = {}
 
 def save_config():
     """Save configuration change."""
@@ -460,11 +462,18 @@ def validate_maps(maps):
             if err :
                 if err: raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
 
-def httpd_restart():
+def execute_cmd(cmd):
     """Restart HTTPD service """
     cmd = "sudo service httpd restart"
-    subprocess.check_call(cmd.split())
-
+    try:
+        subprocess.check_call(cmd.split())
+    except Exception as e:
+        print(e)
+        enter_to_continue()
+        return 0
+    else:
+        return 1
+        
 def switch_mode():
     """Switch program mode from MASTER and SLAVE and restart."""
     CONFIG['MAIN']['ismaster'] = str(not ISMASTER)
@@ -735,6 +744,24 @@ def form_maps_details():
     enter_to_continue()
     clear()
 
+def print_command():
+    print(TXT_MENU_OPTION.format(switch=mode_name(not ISMASTER)))
+
+
+def print_custom_command():
+    if 'CUSTOMCOMMAND' in CONFIG and len(CONFIG['CUSTOMCOMMAND']) > 0  :
+        print(TXT_CUSTOM_CMD_LABEL)
+        for n, c in enumerate( CONFIG['CUSTOMCOMMAND']):
+            print(" {n:>3} = {label}".format(n = "c"+str(n) , label=c))
+
+def print_maps():
+    if MAPS:
+        print("\n {}:\n".format(str_action()))
+        for n, m in enumerate(MAPS):
+            name = str(m['name']).replace("_", " ")
+            print(" {:>3} = {}".format(n , name))
+        print(TXT_REPLACE_ALL_OPTION)
+
 
 def form_menu():
     """Main user interface."""
@@ -745,13 +772,10 @@ def form_menu():
 
         print(TXT_MODE_INFO .format(mode=mode_name(ISMASTER),
             mapspath=CONFIG[mode_name(ISMASTER)].get("maps_s3_path")))
-        print(TXT_MENU_OPTION.format(switch=mode_name(not ISMASTER)))
 
-        if MAPS:
-            print("\n {}:\n".format(str_action()))
-            for n, m in enumerate(MAPS):
-                print(" {:>3} = {}".format(n , m['name']))
-            print(TXT_REPLACE_ALL_OPTION)
+        print_command()
+        print_custom_command()
+        print_maps()
 
         i = input(TXT_INPUT).lower()
 
@@ -776,6 +800,21 @@ def form_menu():
         #elif i == "rh":
         #    httpd_restart()
         #    enter_to_continue()
+
+        elif len(i) > 1 and i[0] == "c":
+            n = i[1:]
+            try:
+                n = int(n)
+            except:
+                pass
+            else:
+                if 'CUSTOMCOMMAND' in CONFIG:
+                    if 0 <= n < len(CONFIG['CUSTOMCOMMAND']):
+                        d = list(CONFIG['CUSTOMCOMMAND'].items())
+                        cmd = d[n][1]
+                        print( TXT_EXECUTE_CMD.format(cmd=cmd))
+                        if execute_cmd(cmd):
+                            enter_to_continue()
 
         else:
             # transfer
@@ -802,6 +841,7 @@ def main():
     if new_version_available():
         print(TXT_NEW_SCRIPT_VERSION_AVAILABLE)
         if input(TXT_INPUT).lower() == "y":
+            clear()
             update_routine()
             return # EXIT TO SCRIPT
 
