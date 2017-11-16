@@ -11,8 +11,6 @@ e dal bucket AWS S3 di cui si fornisce l'accesso.
 L'autore non è responsabile di eventuali perdite di dati causati
 dall'uso, dalla modifica o da errori del programma.
 
-Si consiglia:
-
 - Eseguire sempre delle copie di backup dei dati importanti. 
 - Prestare molta attenzione ai messaggi di alert che il programma fornisce.
 - Avere chiaro cosa si sta facendo e quali sono le conseguenze.
@@ -29,11 +27,7 @@ Dato che i computer MASTER e SLAVE non cominicano direttamente tra loro
 
 ## Requisiti
 
-Testato con Python 3.6.
-
-Libreria esterne
-
-[Boto3](https://github.com/boto/boto3)
+Python 3, [Boto3](https://github.com/boto/boto3)
 
 ```
 $ pip install boto3
