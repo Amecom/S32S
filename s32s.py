@@ -11,7 +11,7 @@ import botocore.exceptions
 from time import sleep
 import boto3
 
-__version__ = "1.2"
+__version__ = "1.3"
 os.sep = "/"
 S3RESOURCE = boto3.resource('s3')
 CONFIG = configparser.ConfigParser()
