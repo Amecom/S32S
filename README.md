@@ -10,9 +10,9 @@ Il trasferimento dei dati tra repository è manuale.
 ## Flusso dati
 
 ```
-MASTER		>> S3			>> SLAVE
+MASTER	>>	S3	>>	SLAVE
 
-ORIGINALE	>> REPOSITORY	>> COPIA
+ORIGINALE	>>	REPOSITORY	>>	COPIA
 ```
 
 ## ATTENZIONE
@@ -31,17 +31,15 @@ dall'uso, dalla modifica o da errori del programma.
 Nelle librerie che utilizzano AWS S3 solitamente ci si riferisce 
 a un oggetto specificando separatamente
 il nome del 'bucket' e un 'prefix'. 
-In questo programma nei file di configurazione e negli input utente
-quando ci si riferisce a un **percorso S3 intende 
-una stringa composta dal nome del bucket e dal prefix
+In questo conteso quando ci si riferisce a un **percorso S3 intende 
+una stringa unica composta dal nome del bucket e dal prefix
 uniti dal carattere '/'** esempio `NOMEBUCKET/PREFIX`. 
 
 
 # Installazione
 
 È necessario installare il programma sia sul computer MASTER che sul computer SLAVE
-anche se dato che il computer MASTER e SLAVE non comunicano direttamente tra loro
-è possibile utilizzare lo script anche solo in una modalità.
+anche se è possibile utilizzare lo script anche solo in una modalità.
 
 Scaricare il file
 
@@ -106,8 +104,8 @@ Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dal
 | `name` | YES | Map name |
 | `description` | NO  | Map description |
 | `s3` | YES | Percorso S3 dove verranno conservati i dati. |
-| `master` | IF MASTER | Directory che contiene i file originali del computer MASTER. |
-| `slave` | IF SLAVE | Directory in cui verranno copiati i file recuperati dal percorso S3. |
+| `master` | YES IF MASTER | Directory dei files sul computer MASTER che verranno trasferiti su S3. |
+| `slave` | YES IF SLAVE | Directory del computer SLAVE in cui verranno copiati i file recuperati da S3. |
 | `ignore` | NO | Regole di esclusione dei percorsi. |
 
 Esempio file 'mainmap.json':
@@ -143,17 +141,17 @@ per escludere degli oggetti durante il trasferimento.
 
 IMPORTANTE:
 
-1) Quando viene specificato solo il percorso della directory allora
+- Quando viene specificato solo il percorso della directory allora
 la directory di destinazione se non esiste verrà creata; se esiste verrà cancellata e ricreata
 perdendo quindi tutti i files precedentemente contenuti.
 
-2) Quando viene specificata una lista di files allora la directory di destinazione deve esistere,
+- Quando viene specificata una lista di files allora la directory di destinazione deve esistere,
 non verrà creata; altri files contenuti nella directory verranno conservati.
 
 ### Salvare il file di mappatura
 
-Il file di mappatura deve essere condiviso tra computer master e slave per questo motivo
-dovrà essere salvato in un percorso S3.
+Il file di mappatura deve essere condiviso tra computer MASTER e SLAVE per questo motivo
+viene salvato in un percorso S3.
 
 Quindi creo un percorso in:
 
@@ -162,8 +160,8 @@ Quindi creo un percorso in:
 sul quale carico il file `mainmap.json`.
 
 Quando il programma chiede di inserire il percorso dei file di mappatura
-è possibile inserire il percorso S3 di un singolo file, o il percorso S3 di una directory
-nella quale è possibile inserire più file di mappatura.
+è possibile inserire il percorso S3 del singolo file o di una directory,
+nel secondo caso è possibile inserire più file di mappatura nella directory.
 
 
 ## Direttiva ignore
@@ -175,16 +173,15 @@ Se espressa questa proprietà deve essere una lista.
 
 | Examples | Description |
 | --- | --- |
-| `string*` | esclude i percorsi che iniziano con 'string |
-| `*string*`| esclude i percorsi che contengono 'string |
-| `*string` | esclude i percorsi che finiscono con 'string |
+| `string*` | esclude i percorsi che iniziano con 'string' |
+| `*string*`| esclude i percorsi che contengono 'string' |
+| `*string` | esclude i percorsi che finiscono con 'string' |
 
 
 NOTA. Il carattere jolly non agisce sul nome del file ma sul percorso relativo
-alla directory di principale dell'oggetto che si vuole trasferire.
-Esempio se il pecorso master nel file di mappatura è `/DATA/FOO`
-ed esiste un file `**/DATA/FOO/SPAM/**DIR/picure.jpg`, la direttiva ignore viene applicata
-alla stringa `DIR/picture.jpg` e NON a `picture.jpg` o `/DIR/picture.jpg`.
+alla directory principale. Esempio se la direcotry 'master' nel file di mappatura è `/data/foo`
+ed esiste un file `/data/foo/spam/dir/picure.jpg`, la direttiva ignore viene applicata
+alla stringa `dir/picture.jpg` e NON a `picture.jpg` o `/dir/picture.jpg`.
 
 ## Esecuzione contemporanea della modalità MASTER e SLAVE
 
@@ -205,7 +202,7 @@ Nel nodo [MAIN] del file s32s.ini troviamo:
 
 | Var | Type | Descrizione |
 | --- | --- | --- |
-| `skip_order_maps` | bool | Evita l'ordinamento automatico della mappe. |
+| `skip_order_maps` | bool | Evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
 | `skip_delete_alert` | bool | True nasconde gli avvisi di cancellazione dei dati. |
 | `skip_tranfer_detail` | bool | True permette di nascondere i dettagli del trasfemento. |
 | `time_sleep_after_rm` | int | Numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task di elminazione di una directory. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore. |
