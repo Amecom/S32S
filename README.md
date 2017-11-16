@@ -28,41 +28,36 @@ dall'uso, dalla modifica o da errori del programma.
 
 ## Nota sui percosi S3
 
-Nelle librerie che utilizzano AWS S3 come Boto3 ci si riferisce 
-a un oggetto specificando separatamente il nome del 'bucket' e un 'prefix'. 
-In questo contesto **percorso S3 intende 
-una stringa unica composta da 'nomebucket' + '/' + 'prefix'**
+Le librerie che utilizzano AWS S3 come Boto3 solitamente si riferiscono 
+ad un oggetto specificando separatamente il nome del 'bucket' e un 'prefix'. 
+In questo contesto un **percorso S3 intende 
+una unica stringa composta da 'nomebucket' + '/' + 'prefix'**
 esempio `nomebucket/prefix/file.ext`. 
 
 
 # Installazione
 
-Il programma deve essere installato sul computer MASTER e sul uno o più computer SLAVE.
+Il programma può essere installato su un computer MASTER e su uno o più computer SLAVE.
 
-Scaricare il file
+Scaricare ed eseguire il programma
 
 ```
 $ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
-```
-
-eseguire il programma
-
-```
 $ python s32s.py
 ```
 
-Al primo avvio verrà creato un file 's32s.ini' e verrà chiesto di:
+Al primo avvio verrà creato un file 's32s.ini' e verrà chiesto di inserire:
 
-1) Selezionare la modalità di esecuzione del computer: MASTER o SLAVE.
-2) Inserire il percorso S3 del file o della directory di mappatura.
+1) la modalità di esecuzione del computer: MASTER o SLAVE.
+2) il percorso S3 del file o directory di mappatura.
 
 
 ## Requisiti
 
 - Python 3.x
-- Python Packages [Boto3](https://github.com/boto/boto3)
-- File 'credentials' per l'accesso a S3
-- File di mappatura dei percorsi
+- Package [Boto3](https://github.com/boto/boto3)
+- File 'credentials'
+- File di mappatura percorsi
 
 ## Installare Boto3
 
@@ -72,8 +67,9 @@ $ pip install boto3
 
 ## Creare file credentials
 
-Occorre quindi creare un file ```~/.aws/credentials```
-per il corretto funzionamento della libreria BOTO3 inclusa nel codice.
+
+Il corretto funzionamento della libreria BOTO3 inclusa nel codice.
+dipende dalla creazione di un file ```~/.aws/credentials```
 Il contenuto del file è simile a questo:
 
 ```
@@ -82,14 +78,12 @@ aws_access_key_id = MY_ACCESS_KEY
 aws_secret_access_key = MY_SECRET_KEY
 ```
 
-Per maggiori informazioni, compresa la configurazione su altri SO,
-consultare le [guida BOTO3](https://github.com/boto/boto3).
-
+Maggiori informazioni su [guida BOTO3](https://github.com/boto/boto3).
 
 ## Creare un file di mappatura
 
-Un file di mappatura è un file in formato JSON che contiene una lista di oggetti/dizionari.
-Ciascun oggetto descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
+Il file di mappatura è un file JSON che descrive una lista di oggetti/dizionari mappa.
+Una mappa descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
 
 | Property | Mandatory | Description |
 | --- | --- | --- |
@@ -122,7 +116,7 @@ Esempio 'map.json':
 ]
 ```
 
-Il file "map.json" contiene due mappature chiamate 'PROJECT 1' e 'PROJECT 2'.
+Il file "map.json" contiene due mappe chiamate 'PROJECT 1' e 'PROJECT 2'.
 
 - 'PROJECT 1' sincronizza tutti gli oggetti presenti in "c:/path/dir/master/1"
 sul percorso S3 "bucketname/backup/dir1" e dal percorso S3 sulla directory SLAVE "/path/slave/dir1".
@@ -134,33 +128,27 @@ IMPORTANTE:
 
 - Quando viene specificato solo il percorso della directory come in 'PROJECT 1' allora:
 	- Se la directory di destinazione non esiste verrà creata.
-	- Se esiste verrà cancellata e ricreata.
-	- Tutti i files contenuti nella directory di destinazione verranno eliminati.
+	- Se esiste verrà cancellata, e con essa tutti i files contenuti, e ricreata con i nuovi files.
 
 - Quando viene specificata una lista di files allora:
-	- La directory di destinazione deve esistere, non verrà creata.
-	- I files contenuti nella directory destinazione, se non sono inclusi nella lista 'files', verranno conservati.
+	- La directory di destinazione deve esistere. Non verrà creata.
+	- I files contenuti nella directory destinazione, se non sono inclusi nella lista 'files', sono conservati.
 
 ### Salvare il file di mappatura
 
-Il file di mappatura deve essere condiviso tra computer MASTER e SLAVE per questo motivo
-viene salvato in un percorso S3.
+Il file di mappatura deve essere condiviso tra MASTER e SLAVE per questo motivo
+deve essere salvato in un percorso S3.
 
-Quindi creo un percorso in:
-
-`bucketname/spam/foo/maps`
-
-sul quale carico il file `map.json`.
+Quindi creo un percorso S3 `bucketname/spam/foo/maps` sul quale carico il file `map.json`.
 
 Quando il programma chiede di inserire il percorso dei file di mappatura
-è possibile inserire il percorso S3 del singolo file o di una directory,
-nel secondo caso è possibile inserire più file di mappatura nella directory.
+è possibile inserire il percorso S3 di un file o di una directory.
+In una directory è possibile inserire più file di mappatura.
 
 
 ## Direttiva ignore
 
-Ogni oggetto mappatura può contenere la proprietà ignore.
-Se espressa questa proprietà deve essere una lista.
+Ogni mappa può avere una proprietà ignore che, se espressa, deve essere una lista.
 
 È possibile utilizzare il carattere jolly '*' in questo modo:
 
@@ -171,19 +159,19 @@ Se espressa questa proprietà deve essere una lista.
 | `*string` | esclude i percorsi che finiscono con 'string' |
 
 
-NOTA. Il carattere jolly non agisce sul nome del file ma sul percorso relativo
-alla directory principale. Esempio se la direcotry 'master' nel file di mappatura è `/data/foo`
+ATTENZIONE. Il carattere jolly non agisce sul nome del file ma sul percorso relativo
+alla directory principale. Esempio se la direcotry 'master' è `/data/foo`
 ed esiste un file `/data/foo/spam/dir/picure.jpg`, la direttiva ignore viene applicata
 alla stringa `spam/dir/picture.jpg` e NON a `picture.jpg` o `/spam/dir/picture.jpg`.
 
 ## Esecuzione contemporanea della modalità MASTER e SLAVE
 
 Il programma può essere utilizzato in uno stesso computer sia in modalità
-MASTER che SLAVE. In questo caso è possibile (e necessario) 
+MASTER che SLAVE. In questo caso è necessario
 specificare un file di mappatura per la modalità MASTER e uno per la modalità SLAVE.
 
-Utilizzare una stessa mappatura nelle due modalità
-non solo non ha senso ma anche pericoloso per i proprio dati.
+Utilizzare uno stessao file di mappatura nelle due modalità all'interno dello stesso computer
+non ha senso ed è pericoloso per i proprio dati.
 
 
 ## File 's32s.ini'
@@ -214,8 +202,9 @@ Nel blocco [MAIN] del file s32s.ini troviamo:
 
 | Var | Type | Descrizione |
 | --- | --- | --- |
-| `skip_order_maps` | bool | True evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
+| `ismater` | bool | True per eseguire il programma in modalità master. |
 | `skip_delete_alert` | bool | True nasconde gli alert di cancellazione dei dati. |
+| `skip_order_maps` | bool | True evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
 | `skip_tranfer_detail` | bool | True nasconde il riepilogo del trasfemento. |
 | `time_sleep_after_rm` | int | Numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task di elminazione di una directory. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore. |
 
@@ -228,7 +217,7 @@ senza uscire dal programma stesso.
 Esempio: il computer SLAVE è un web server APACHE
 su cui vengono caricati dal percorso S3 i file aggiornati di un sito web potrebbe
 essere utile inserire nell'interfaccia un comando per riavviare il servizio httpd.
-In questo caso basta aggiungere nel file s32s.ini sotto il blocco [CUSTOMCOMMAND]
+In questo caso si può aggiungere nel file s32s.ini sotto il blocco [CUSTOMCOMMAND]
 la seguente riga:
 
 ```
@@ -236,13 +225,4 @@ la seguente riga:
 http_restart = sudo service httpd restart
 ```
 
-È possibile inserire un numero illimitato di comandi.
-
-```
-[CUSTOMCOMMAND]
-cmd1 = .. do stuff
-cmd2 = .. do stuff
-cmd3 = .. do stuff
-
-```
-
+È possibile inserire un numero illimitato di comandi su ighe diverse.
