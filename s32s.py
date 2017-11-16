@@ -21,6 +21,10 @@ URL_GET_VERSION = "https://raw.githubusercontent.com/Amecom/S32S/master/VERSION"
 ISMASTER = None
 MAPS = None
 
+"""
+LABEL
+"""
+
 TXT_TRANSFER_INFO = """
  {map[name]} - from file: {map[filename]}
  {map[description]}
@@ -44,37 +48,35 @@ TXT_DELETE_WARNING = """
  ***************************** 
 """
 TXT_MENU_MODE = """
-Select run mode:
+Select mode:
 
     {inp_master} = MASTER - {info_master}
     {inp_slave} = SLAVE - {info_slave}
 """
-TXT_MENU_OPTION = """
- Options:
-  md = Maps Details
-  mr = Maps Reload
-  mo = Maps Open
-  sm = Switch Mode to {switch}
-   x = Exit
-"""
+TXT_LABEL_CMD_MD = "Maps Details"
+TXT_LABEL_CMD_MR = "Maps Reload"
+TXT_LABEL_CMD_MO = "Maps Open"
+TXT_LABEL_CMD_SM = "Switch Mode"
+TXT_LABEL_CMD_X = "Exit"
+TXT_LABEL_CMD_ALL = "Transfer all"
+TXT_LABEL_MAIN_COMMAND = "Main Command"
+TXT_LABEL_CUSTOM_COMMAND = "Custom Command"
+TXT_LABEL_TRANFER_LIST = "Transfer Command"
 TXT_NEW_SCRIPT_VERSION_AVAILABLE = " New version of script is available.\n Enter 'y' to upgrade, anything else to skip."
 TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {old_name}."
 TXT_RESTART = " Restart script."
-TXT_MODE_INFO = " *** MODE: {mode} | MAPS PATH S3 : {mapspath} ***"
+TXT_MODE_INFO = "*** {mode} MODE *** Loaded S3 Maps Path: '{mapspath}'"
 TXT_EXECUTE_CMD = " EXCUTE: {cmd}"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
 TXT_ACTION_SLAVE = "Replace local objects with those stored in S3"
 TXT_NOTDO = " Nothing done!"
 TXT_DO = " Done!"
 TXT_LOADING = " Loading '{what}'... "
-TXT_REPLACE_ALL_OPTION = " all = REPLACE ALL"
 TXT_DELETE_OBJECT = " {storage} DELETE: {object}"
 TXT_CREATE_OBJECT = " {storage} CREATE: {object}"
 TXT_SAVE_OBJECT = " {storage} SAVE IN '{root}' OBJECT: '{object}'"
-
 TXT_TRANSFER_IGNORE = " \t{storage} IGNORE: {object}"
-TXT_CUSTOM_CMD_LABEL = " Custom Command"
-TXT_INPUT = "\n > Enter input: "
+TXT_INPUT = "\n > Enter command: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
 TXT_INPUT_ENTER = "\n > Press ENTER to continue..."
 TXT_INPUT_INSERT_MAPS_PATH = "\n > Insert S3 path contains mapping files for '{mode}' [x to Exit]: "
@@ -194,6 +196,10 @@ def slipt_s3path(path):
     prefix = "/".join(p[1:]) if len(p) > 1 else ""
     return bucket, prefix
 
+"""
+_get_NAME function must be used only inside ls_ mk_ rm_ function
+"""
+
 def _get_bucket(bucket_name):
     bucket = S3RESOURCE.Bucket(bucket_name)
     err = None
@@ -209,7 +215,6 @@ def _get_bucket(bucket_name):
         print(err)
         enter_to_continue()
 
-# must be used only inside ls_ mk_ rm_ function
 def _get_bucket_object(s3_path):
     bucket, prefix = slipt_s3path(s3_path)
     if _get_bucket(bucket):
@@ -217,7 +222,6 @@ def _get_bucket_object(s3_path):
         # so it doesn't return explict .get() method
         return S3RESOURCE.Object(bucket, prefix)
 
-# must be used only inside ls_ mk_ rm_ function
 def get_master_file(filepath):
     """Return binary data from 'filepath' in master repository."""
     f = get_pc_file if ISMASTER else get_s3_file
@@ -411,8 +415,8 @@ def load_maps_from_s3_path(s3_path):
 def validate_maps(maps):
     """raise excepition if maps error."""
 
-    #check common error of 'path
-    def check_path_error(path):
+    def _check_path_error(path):
+        """check common error of 'path"""
         if path[0] == "~":
             return TXT_ERR_MAP_SUB_USERHOME
 
@@ -437,33 +441,38 @@ def validate_maps(maps):
             if not master_path:
                 err = TXT_ERR_MAP_SUB_EMPTY_PROPERTY.format(property='master')
                 raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
-            err = check_path_error(master_path)
+            err = _check_path_error(master_path)
             if err:
                raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
         else:
             if not slave_path :
                 err = TXT_ERR_MAP_SUB_EMPTY_PROPERTY.format(property='slave')
                 raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
-            err = check_path_error(slave_path)
+            err = _check_path_error(slave_path)
             if err :
                 if err: raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
 
 def execute_cmd(cmd):
-    """Restart HTTPD service """
-    cmd = "sudo service httpd restart"
+    """Execute custom command"""
     try:
         subprocess.check_call(cmd.split())
     except Exception as e:
+        print(cmd)
         print(e)
         enter_to_continue()
-    else:
-        return 1
-        
+    return 1 # always need return True
+
+def transfer_all():
+    for xmap in range(len(MAPS)):
+        form_transfer(MAPS[xmap])
+    return 1
+
 def switch_mode():
     """Switch program mode from MASTER and SLAVE and restart."""
     CONFIG['MAIN']['ismaster'] = str(not ISMASTER)
     save_config()
     main()
+    # return 0 to force exit to previous form_menu()
 
 def config_ISMASTER():
     global ISMASTER
@@ -485,6 +494,7 @@ def config_MAPS():
         else:
             print(TXT_ERR_MAPS_NOT_FOUND.format(path=map_s3_path))
             enter_to_continue()
+    return 1 # to reopen form_menu
 
 def get_ISMASTER():
     """Set global var ISMASTER from configuration file."""
@@ -503,46 +513,11 @@ def get_MAPS():
     if s3_path:
         MAPS = load_maps_from_s3_path(s3_path)
 
-def input_form_maps_s3_path():
-    """Ask user the s3 path of mapping files
-
-    Return string or None
-    """
-    i = ""
-    while i == "":
-        clear()
-        i = input(TXT_INPUT_INSERT_MAPS_PATH.format(mode=mode_name(ISMASTER)))
-        if i.lower() == "x":
-            return
-        i = normalize_external_path(i)
-    clear()
-    return i
-
-# 'input_form_' ar forms returns values
-def input_form_ismaster():
-    """Form to ask user the programm mode (MASTER/SLAVE).
-
-    Return
-        - True
-            if usere selected MASTER
-        - False
-            if usere selected SLAVE
-
-    """
-    # option value for master mast be "1"!
-    clear()
-    option = ("1", "0")
-    i = None
-    while i not in option:
-        clear()
-        print(TXT_MENU_MODE.format(inp_master=option[0],
-                info_master=str_action(1), 
-                inp_slave=option[1],
-                info_slave=str_action(0)))
-        i = input(TXT_INPUT_OPTION.format(option=option))
-
-    clear()
-    return bool(int(i))
+def reload_MAPS():
+    maps = get_MAPS()
+    if maps :
+        MAPS = maps
+    return 1
 
 def ignore_rules(rules, jolly="*"):
     """ Load rules and create test function to verify
@@ -575,13 +550,12 @@ def ignore_rules(rules, jolly="*"):
                 e.append(r[1:])
             else:
                 m.append(r)
-
         test = ((c , lambda obj, rules: obj.find(rules) > -1),
             (s , lambda obj, rules: obj.startswith(rules)),
             (e , lambda obj, rules: obj.endswith(rules)),
             (m , lambda obj, rules: obj == rules))
 
-    def ignore(string):
+    def _ignore(string):
         """Return true if 'string' match with test rules."""
         nonlocal test, rules, s, e, c, m
         if not rules : return
@@ -589,9 +563,12 @@ def ignore_rules(rules, jolly="*"):
             for r in t[0]:
                 if t[1](string,r):
                     return 1
-    return ignore
+    return _ignore
 
-def create_obj_xmap_transfer(xmap):
+def create_obj_xmap_mode(xmap):
+    """Return a object with information 
+    about master ans slave origin and destination
+    """
     datamap = {
         'name' : xmap.get('name'),
         'filename' : xmap.get('filename'),
@@ -621,6 +598,89 @@ def create_obj_xmap_transfer(xmap):
         'destination' :destination
         }
 
+"""
+command_NAME function are list of tuple
+with ( command_char, label, function to execute )
+used to create form_menu.
+"""
+
+def command_main():
+    return [("md", TXT_LABEL_CMD_MD, form_maps_details),
+      ("mr", TXT_LABEL_CMD_MR, reload_MAPS),
+      ("mo", TXT_LABEL_CMD_MO, config_MAPS),
+      ("sm", TXT_LABEL_CMD_SM, switch_mode),
+      ("x", TXT_LABEL_CMD_X, lambda: False)]
+
+def command_custom():
+    if 'CUSTOMCOMMAND' in CONFIG and len(CONFIG['CUSTOMCOMMAND']) > 0  :
+        d = list(CONFIG['CUSTOMCOMMAND'].items())
+        return [ ("c" + str(n), c[0], lambda v=c[1]: execute_cmd(v)) for n, c in enumerate(d) ]
+    return []
+
+def command_transfer(): 
+    if MAPS:
+        main = [
+            (str(n) ,
+               str(m['name']).replace("_", " "),
+               lambda v=m: form_transfer(v))        
+                for n, m in enumerate(MAPS)
+            ]        
+        main.append(("all" ,
+               TXT_LABEL_CMD_ALL,
+               transfer_all))    
+        return main
+    return []
+
+
+"""
+input_NAME are user forms that return a value
+"""
+
+def input_form_maps_s3_path():
+    """Ask user the s3 path of mapping files
+
+    Return string or None
+    """
+    i = ""
+    while i == "":
+        clear()
+        i = input(TXT_INPUT_INSERT_MAPS_PATH.format(mode=mode_name(ISMASTER)))
+        if i.lower() == "x":
+            return
+        i = normalize_external_path(i)
+    clear()
+    return i
+
+def input_form_ismaster():
+    """Form to ask user the programm mode (MASTER/SLAVE).
+
+    Return
+        - True
+            if usere selected MASTER
+        - False
+            if usere selected SLAVE
+
+    """
+    # option value for master mast be "1"!
+    clear()
+    option = ("1", "0")
+    i = None
+    while i not in option:
+        clear()
+        print(TXT_MENU_MODE.format(inp_master=option[0],
+                info_master=str_action(1), 
+                inp_slave=option[1],
+                info_slave=str_action(0)))
+        i = input(TXT_INPUT_OPTION.format(option=option))
+
+    clear()
+    return bool(int(i))
+
+"""
+form_NAME functions are user form show or execute task
+This form must be return True to return at form_main
+and return False to close form_main.
+"""
 
 def form_transfer(xmap):
     """Transfer data from master to slave
@@ -631,8 +691,7 @@ def form_transfer(xmap):
         nonlocal info
         nonlocal destination
         if not CONFIG['MAIN'].getboolean('skip_delete_alert'):
-            print(TXT_DELETE_WARNING.format(
-                    info = info['destination']['name'],
+            print(TXT_DELETE_WARNING.format(info = info['destination']['name'],
                     path = destination))
             confirm = input(TXT_INPUT_DELETE_CONFIRM).lower()
         else:
@@ -644,6 +703,7 @@ def form_transfer(xmap):
             if not rm_slave_object(destination, ignore_error=1):
                 # error only if slave is S3 and bucket not exixts
                 # if prefix not exists ignore errror; it will be created later.
+                print(TXT_ERROR_MASTER_PATH_NOT_ERROR.format(dir_name=origin))
                 return
 
             print(TXT_CREATE_OBJECT.format(storage=info['destination']['name'], object=info['destination']['path']))
@@ -653,19 +713,14 @@ def form_transfer(xmap):
                 print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
                 return
             return 1
-        else:
-            print(TXT_NOTDO)
 
-    clear()
-
-    info = create_obj_xmap_transfer(xmap)
-    print( TXT_TRANSFER_INFO.format(**info))
-
+    info = create_obj_xmap_mode(xmap)
+     # not use info[] for 'ignore' and 'files' becasuse in info[] are string
     origin = info['origin']['path'] 
     destination = info['destination']['path']
-     # not use info[], in info[] ignore and files are string
     ignore_test = ignore_rules(xmap.get("ignore"))
     objects = xmap.get('files')
+
 
     # if not objects, get all objects in origin path.
     if objects: 
@@ -678,6 +733,9 @@ def form_transfer(xmap):
         objects = ls_master_path(origin)
 
     initialize = 0
+
+    clear()
+    print(TXT_TRANSFER_INFO.format(**info))
     for obj in objects:
 
         obj_data = None if obj.endswith("/") else get_master_file("/".join([origin, obj]))
@@ -690,20 +748,18 @@ def form_transfer(xmap):
             initialize = 1
             if delete_main_dir:
                 if not _create_slave_environment():
-                    print(TXT_ERROR_MASTER_PATH_NOT_ERROR.format(dir_name=origin))
                     break  # objects transfer
 
-
-            # nella modalita dove sono specificati i singoli file
-            # non è permesso sincronizzare il contenuto di una directory
-            #if not delete_main_dir and not obj_data:
+                # nella modalita dove sono specificati i singoli file
+                # non è permesso sincronizzare il contenuto di una directory
+                #if not delete_main_dir and not obj_data:
 
         if ignore_test(obj):
             print(TXT_TRANSFER_IGNORE.format(storage=info['destination']['name'], object=obj))
         else:
             print(TXT_SAVE_OBJECT.format(storage=info['destination']['name'],root=info['destination']['path'], object=obj))
             if not mk_slave_object(obj_fullpath, obj_data):
-                break # objects tranfer
+                break # objects transfer
 
     else: # object for else
         if not CONFIG['MAIN'].getboolean('skip_tranfer_detail'):
@@ -714,111 +770,45 @@ def form_transfer(xmap):
     print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
     enter_to_continue()
     clear()
-
+    return 1
 
 def form_maps_details():
     """Show to user loaded maps details."""
     clear()
-
     for xmap in MAPS:
-        info = create_obj_xmap_transfer(xmap)
-        print( TXT_TRANSFER_INFO.format( **info ) )
+        info = create_obj_xmap_mode(xmap)
+        print(TXT_TRANSFER_INFO.format(**info))
 
     enter_to_continue()
-    clear()
-
-def print_command():
-    print(TXT_MENU_OPTION.format(switch=mode_name(not ISMASTER)))
-
-
-def print_custom_command():
-    if 'CUSTOMCOMMAND' in CONFIG and len(CONFIG['CUSTOMCOMMAND']) > 0  :
-        print(TXT_CUSTOM_CMD_LABEL)
-        for n, c in enumerate(CONFIG['CUSTOMCOMMAND']):
-            print(" {n:>3} = {label}".format(n = "c" + str(n) , label=c))
-
-def print_maps():
-    if MAPS:
-        print("\n {}:\n".format(str_action()))
-        for n, m in enumerate(MAPS):
-            name = str(m['name']).replace("_", " ")
-            print(" {:>3} = {}".format(n , name))
-        print(TXT_REPLACE_ALL_OPTION)
-
+    return 1
 
 def form_menu():
-    """Main user interface."""
-    global MAPS
+    cmd_m = command_main()
+    cmd_t = command_transfer()
+    cmd_c = command_custom()
+    glob = [ (cmd, label, fun) for cmd, label, fun in cmd_c + cmd_m + cmd_t ]
 
-    while 1:
+    show_form = True
+    while show_form:
         clear()
-
-        print(TXT_MODE_INFO .format(mode=mode_name(ISMASTER),
-            mapspath=CONFIG[mode_name(ISMASTER)].get("maps_s3_path")))
-
-        print_command()
-        print_custom_command()
-        print_maps()
+        print(TXT_MODE_INFO.format(mode=mode_name(ISMASTER),mapspath=CONFIG[mode_name(ISMASTER)].get("maps_s3_path")))
+        for label, cmds in [(TXT_LABEL_MAIN_COMMAND, cmd_m) ,(TXT_LABEL_CUSTOM_COMMAND, cmd_c), (TXT_LABEL_TRANFER_LIST, cmd_t)]:
+            if cmds:
+                print(" \n {}:".format(label))
+                for cmd, label, fun in cmds:
+                    print(" {cmd:>3} = {label}".format(cmd=cmd , label=label))
 
         i = input(TXT_INPUT).lower()
 
-        if i == "x":
-            break
-
-        elif i == "sm":
-            switch_mode()
-            break
-
-        elif i == "mr":
-            maps = get_MAPS()
-            if maps : MAPS = maps
-
-        elif i == "mo":
-            config_MAPS(exit_while=1)
-
-
-        elif i == "md":
-            form_maps_details()
-
-        #elif i == "rh":
-        #    httpd_restart()
-        #    enter_to_continue()
-
-        elif len(i) > 1 and i[0] == "c":
-            n = i[1:]
-            try:
-                n = int(n)
-            except:
-                pass
-            else:
-                if 'CUSTOMCOMMAND' in CONFIG:
-                    if 0 <= n < len(CONFIG['CUSTOMCOMMAND']):
-                        d = list(CONFIG['CUSTOMCOMMAND'].items())
-                        cmd = d[n][1]
-                        print(TXT_EXECUTE_CMD.format(cmd=cmd))
-                        if execute_cmd(cmd):
-                            enter_to_continue()
-
-        else:
-            # transfer
-            selected_xmap = None
-            try:
-                i = int(i)
-            except:
-                if i == "all":
-                    selected_xmap = range(len(MAPS))
-            else:
-                if 0 <= i < len(MAPS):
-                    selected_xmap = (i,)
-
-            if selected_xmap:
-                for xmap in selected_xmap:
-                    form_transfer(MAPS[xmap])
-
-    clear()
+        for cmd, label, fun in glob:
+            if i == cmd:
+                # all fun called must be
+                # return True to show form_menu() again
+                show_form = fun()
 
 def main():
     """Main function"""
+
     clear()
 
     if new_version_available():
