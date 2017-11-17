@@ -92,8 +92,9 @@ TXT_ERR_MAP = "!! ERROR Filename: '{filename}' Maps Element: '{element_id}': {er
 TXT_ERR_MAP_SUB_USERHOME = " Path can't start with ~"
 TXT_ERR_MAP_SUB_EMPTY_PROPERTY = "'{property}' property is mandatory.'" 
 
-def mode_name(ismaster):
+def mode_name(ismaster=None):
     """Return string that describes mode used in config."""
+    if not ismaster : ismaster = ISMASTER
     return "MASTER" if ismaster else "SLAVE"
 
 def mode_action(ismaster=None):
@@ -440,10 +441,40 @@ def mk_s3_object(object_path, data=None):
 
 def maps_load_from_ini():
     """Set global var MAPS from configuration file."""
-    s3_path = CONFIG[mode_name(ISMASTER)].get("maps_s3_path")
+    s3_path = CONFIG[mode_name()].get("maps_s3_path")
     if s3_path:
         maps = maps_load_from_s3_path(s3_path)
         return maps
+
+def maps_load_from_s3_path(s3_path):
+    """Load maps from 's3_path' and Return list of xmap."""
+    maps = []
+    # support for single files
+    if s3_path.endswith(".json"):
+        s3_path, objects = slipt_s3path(s3_path)
+        objects = (objects,)
+    else:
+        objects = ( obj for obj in ls_s3_path(s3_path) if obj.endswith(".json") )
+    for object in objects:
+        file = get_s3_file("/".join([s3_path, object]))
+        xmap = json.loads(file.decode('utf8'))
+        for m in xmap:
+            m['filename'] = object
+            for prop in ["master","s3", "slave"]:
+                if m.get(prop):
+                    m[prop] = normalize_external_path(m[prop])
+
+        try:
+            maps_validate(xmap)
+        except Exception as e:
+            print(e, " [maps_load_from_s3_path]")
+            enter_to_continue()
+        else:
+            maps += xmap
+    # sort must be after validate to keep user debug most efficent.
+    if maps and not CONFIG['MAIN'].getboolean('skip_order_maps'):
+        maps = sorted(maps, key=lambda k:k['name'])
+    return maps
 
 def maps_reload():
     global MAPS
@@ -487,37 +518,6 @@ def maps_validate(maps):
             if err :
                 if err: raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
 
-def maps_load_from_s3_path(s3_path):
-    """Load maps from 's3_path' and Return list of xmap."""
-    maps = []
-    # support for single files
-    if s3_path.endswith(".json"):
-        s3_path, objects = slipt_s3path(s3_path)
-        objects = (objects,)
-    else:
-        objects = ( obj for obj in ls_s3_path(s3_path) if obj.endswith(".json") )
-    for object in objects:
-        file = get_s3_file("/".join([s3_path, object]))
-        xmap = json.loads(file.decode('utf8'))
-        for m in xmap:
-            m['filename'] = object
-            for prop in ["master","s3", "slave"]:
-                if m.get(prop):
-                    m[prop] = normalize_external_path(m[prop])
-
-        try:
-            maps_validate(xmap)
-        except Exception as e:
-            print(e, " [maps_load_from_s3_path]")
-            enter_to_continue()
-        else:
-            maps += xmap
-    # sort must be after validate to keep user debug most efficent.
-    if maps and not CONFIG['MAIN'].getboolean('skip_order_maps'):
-        maps = sorted(maps, key=lambda k:k['name'])
-    return maps
-
-
 def execute_cmd(cmd):
     """Execute custom command"""
     try:
@@ -527,6 +527,7 @@ def execute_cmd(cmd):
         print(e)
     enter_to_continue()
     return 1 # always need return True
+
 def transfer_all():
     for xmap in range(len(MAPS)):
         form_transfer(MAPS[xmap])
@@ -538,6 +539,7 @@ def switch_mode():
     config_save()
     main()
     # return 0 to force exit to previous form_menu()
+
 def ismaster_load_from_ini():
     """Set global var ISMASTER from configuration file."""
     try:
@@ -676,7 +678,7 @@ def input_form_maps_s3_path():
             msg = TXT_INPUT_INSERT_MAPS_PATH_EXIT
         else:
             msg = TXT_INPUT_INSERT_MAPS_PATH
-        i = input(msg.format(mode=mode_name(ISMASTER)))
+        i = input(msg.format(mode=mode_name()))
         if i.lower() == "x":
             return
         i = normalize_external_path(i)
@@ -719,7 +721,7 @@ def input_form_global_MAPS():
         maps = maps_load_from_s3_path(map_s3_path)
         if maps:
             MAPS = maps
-            CONFIG[mode_name(ISMASTER)]['maps_s3_path'] = map_s3_path
+            CONFIG[mode_name()]['maps_s3_path'] = map_s3_path
             config_save()
             form_maps_details()
         else:
@@ -746,6 +748,7 @@ def form_maps_reload():
         print(TXT_MAPS_RELOAD_KO)
         enter_to_continue()
         return 1 # return to form_menu
+
 def _init_path_transfer(info):
     """Remove and create main slave path"""
     if not CONFIG['MAIN'].getboolean('skip_delete_alert'):
@@ -854,7 +857,7 @@ def form_transfer(xmap):
 def form_maps_details():
     """Show to user loaded maps details."""
     clear()
-    print(TXT_MAPS_DETAILS.format(path=CONFIG[mode_name(ISMASTER)]["maps_s3_path"]))
+    print(TXT_MAPS_DETAILS.format(path=CONFIG[mode_name()]["maps_s3_path"]))
     for xmap in MAPS:
         info = create_obj_xmap_mode(xmap)
         print(TXT_TRANSFER_INFO.format(**info))
@@ -870,7 +873,7 @@ def form_menu():
     show_form = True
     while show_form:
         clear()
-        print(TXT_MODE_INFO.format(mode=mode_name(ISMASTER),mapspath=CONFIG[mode_name(ISMASTER)].get("maps_s3_path")))
+        print(TXT_MODE_INFO.format(mode=mode_name(),mapspath=CONFIG[mode_name()].get("maps_s3_path")))
         for label, cmds in [(TXT_LABEL_MAIN_COMMAND, cmd_m) ,(TXT_LABEL_CUSTOM_COMMAND, cmd_c), (TXT_LABEL_TRANFER_LIST, cmd_t)]:
             if cmds:
                 print(" \n {}:".format(label))
