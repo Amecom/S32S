@@ -28,8 +28,8 @@ LABEL
 TXT_TRANSFER_INFO = """
  {map[name]} - from file: {map[filename]}
  {map[description]}
-    TRANSFER INFORMATION:
 
+    TRANSFER INFORMATION
     * FROM {origin[name]} : '{origin[path]}'
    >> TO {destination[name]} : '{destination[path]}'
 
@@ -41,36 +41,46 @@ TXT_DELETE_WARNING = """
 
   ALL OBJECTS stored in
 
-  {info}: '{path}'
+  {storage}: '{path}'
 
   Will be PERMANENTLY DELETE.
 
  ***************************** 
 """
-TXT_MENU_MODE = """
-Select mode:
+TXT_TRANSFER_FILES_WARNING = """
+  ********* WARNING  ********* 
 
-    {inp_master} = MASTER - {info_master}
-    {inp_slave} = SLAVE - {info_slave}
+  THIS FILES '{files}' stored in
+
+  {storage}: '{path}'
+
+  Will be REPLACED.
+
+ ***************************** 
 """
+
+TXT_MAPS_RELOAD_OK = " Maps Reloaded."
+TXT_MAPS_RELOAD_KO = " Erron on Maps Reloaded."
+
+TXT_MAPS_DETAILS = " Maps Details '{path}':"
+TXT_LABEL_SELECT_MODE = " Select mode"
 TXT_LABEL_CMD_MD = "Maps Details"
 TXT_LABEL_CMD_MR = "Maps Reload"
 TXT_LABEL_CMD_MO = "Maps Open"
 TXT_LABEL_CMD_SM = "Switch Mode"
 TXT_LABEL_CMD_X = "Exit"
 TXT_LABEL_CMD_ALL = "Transfer all"
-TXT_LABEL_MAIN_COMMAND = "Main Command"
-TXT_LABEL_CUSTOM_COMMAND = "Custom Command"
-TXT_LABEL_TRANFER_LIST = "Transfer Command"
+TXT_LABEL_MAIN_COMMAND = "Main command"
+TXT_LABEL_CUSTOM_COMMAND = "Custom command"
+TXT_LABEL_TRANFER_LIST = "Transfer command"
 TXT_NEW_SCRIPT_VERSION_AVAILABLE = " New version of script is available.\n Enter 'y' to upgrade, anything else to skip."
 TXT_SCRIPT_UPDATED = " New Script has been downloaded. Old script still exists renamed {old_name}."
 TXT_RESTART = " Restart script."
-TXT_MODE_INFO = "*** {mode} MODE *** Loaded S3 Maps Path: '{mapspath}'"
-TXT_EXECUTE_CMD = " EXCUTE: {cmd}"
+TXT_MODE_INFO = "*** {mode} MODE *** S3 Maps Path loaded: '{mapspath}'"
+TXT_EXECUTE_CMD = " EXECUTE: {cmd}"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
 TXT_ACTION_SLAVE = "Replace local objects with those stored in S3"
-TXT_NOTDO = " Nothing done!"
-TXT_DO = " Done!"
+TXT_TRANSFER_COMPLETE = "* TRANSFER COMPLETE"
 TXT_LOADING = " Loading '{what}'... "
 TXT_DELETE_OBJECT = " {storage} DELETE: {object}"
 TXT_CREATE_OBJECT = " {storage} CREATE: {object}"
@@ -79,26 +89,27 @@ TXT_TRANSFER_IGNORE = " \t{storage} IGNORE: {object}"
 TXT_INPUT = "\n > Enter command: "
 TXT_INPUT_OPTION = "\n > Enter input {option}: "
 TXT_INPUT_ENTER = "\n > Press ENTER to continue..."
-TXT_INPUT_INSERT_MAPS_PATH = "\n > Insert S3 path contains mapping files for '{mode}' [x to Exit]: "
-TXT_INPUT_DELETE_CONFIRM = "\n > Enter 'y' to confirm delete, anything else to cancel transfer: " 
-TXT_WARNING_EXIT_TASK_WITH_ERROR = "\n !! WARNING Task not completed."
-TXT_ERROR_MASTER_PATH_NOT_ERROR = "\n !! ERROR Master directory {dir_name} not found or empty."
+TXT_INPUT_INSERT_MAPS_PATH = "\n > Insert S3 path contains maps files for '{mode}': "
+TXT_INPUT_INSERT_MAPS_PATH_EXIT = "\n > Insert S3 path contains maps files for '{mode}' [x to Exit]: "
+TXT_INPUT_TRANSFER_CONFIRM = "\n > Enter 'y' to confirm, anything else to cancel transfer: " 
+TXT_WARNING_EXIT_TASK_WITH_ERROR = "!! WARNING Task not completed."
+TXT_ERR_MASTER_OBJECT_NOT_EXISTS = " !! ERROR Path object '{path}' not exists in '{storage}'."
 TXT_ERR_S3_CONNECTION_ERROR = "\n !! ERROR S3 Could not connect. Verify your internet connection and try again."
 TXT_ERR_S3_BUCKET_LOAD = "\n !! ERROR S3 Bucket '{bucket_name}' NOT FOUND"
 TXT_ERR_S3_LIST_CONNECTION = "\n !! ERROR S3 PATH '{path}': bucket not found or access denied or no internet access."
 TXT_ERR_S3_LIST_CONTENTS = "\n !! ERROR S3 PATH '{path}': path does not have a contents or not exists."
 TXT_ERR_SCRIPT_UPDATE_CONFIG = "\n !! ERROR not found 'url_script_update' property in configuration file."
-TXT_ERR_MAPS_NOT_FOUND = "\n !! ERROR MAPS NOT FOUND IN '{path}'"
+TXT_ERR_MAPS_NOT_FOUND = "\n !! ERROR MAPS NOT FOUND OR INVALID"
 TXT_ERR_MAP_EMPTY = "\n !! ERROR EMPTY MAPS"
-TXT_ERR_MAP = "!! ERROR MAP filename:'{filename}' element:'{element_id}': {error}"
+TXT_ERR_MAP = "!! ERROR Filename: '{filename}' Maps Element: '{element_id}': {error}"
 TXT_ERR_MAP_SUB_USERHOME = " Path can't start with ~"
-TXT_ERR_MAP_SUB_EMPTY_PROPERTY = "in this configuration property '{}' is mandatory'" 
+TXT_ERR_MAP_SUB_EMPTY_PROPERTY = "'{property}' property is mandatory.'" 
 
 def mode_name(ismaster):
-    """Return string name used, for examples, in config."""
+    """Return string that describes mode used in config."""
     return "MASTER" if ismaster else "SLAVE"
 
-def str_action(ismaster=None):
+def mode_action(ismaster=None):
     """Return string that describes transfert mode."""
     if not ismaster : ismaster = ISMASTER
     return  TXT_ACTION_MASTER if ismaster else TXT_ACTION_SLAVE
@@ -111,39 +122,51 @@ def clear():
     """Clear Screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def validate_config():
+def ini_validate():
     save = 0
-    for var in ("skip_order_maps", "skip_delete_alert", "skip_tranfer_detail"):
-        try:
-            CONFIG['MAIN'].getboolean(var)
-        except:
-            CONFIG['MAIN'][var] = 0
-            save = 1
-    try:
-        int(CONFIG['MAIN']['time_sleep_after_rm'])
-    except:
-        CONFIG['MAIN']['time_sleep_after_rm'] = 3
-        save = 1
-    if save: save_config()
+    if 'MAIN' not in CONFIG:
+        ini_load_default()
 
-def load_default_config():
+    # test_bool use element position to set default option
+    # element in test_bool[0] have false default 
+    # element in test_bool[1] have true default 
+    test_bool = (
+        ("skip_order_maps", "skip_delete_alert", "skip_tranfer_detail"), # DEFAULT FALSE
+        ("ismaster",)  # DEFAULT TRUE
+        ) 
+    for v, block in enumerate(test_bool):
+        for var in block:
+            try:
+                CONFIG['MAIN'].getboolean(var)
+            except ValueError:
+                CONFIG['MAIN'][var] = str(v)
+                save = 1
+
+    try:
+        CONFIG['MAIN'].getint('time_sleep_after_rm')
+    except ValueError:
+        CONFIG['MAIN']['time_sleep_after_rm'] = "3"
+        save = 1
+    if save:
+        config_save()
+
+def ini_load_default():
     """return default configuration."""
+    mode_conf = {
+        'maps_s3_path': ''
+        }
     CONFIG['MAIN'] = {
-        'skip_order_maps': 0,
+        'ismaster': '',
         'skip_delete_alert': 0,
+        'skip_order_maps': 0,
         'skip_tranfer_detail' : 0,
-        'time_sleep_after_rm': 3,
-        'ismaster': ''
+        'time_sleep_after_rm': 3
         }
-    CONFIG[mode_name(1)] = {
-        'maps_s3_path': ''
-        }
-    CONFIG[mode_name(0)] = {
-        'maps_s3_path': ''
-        }
+    CONFIG[mode_name(1)] = mode_conf
+    CONFIG[mode_name(0)] = mode_conf
     CONFIG['CUSTOMCOMMAND'] = {}
 
-def save_config():
+def config_save():
     """Save configuration change."""
     with open(CONFIG_FILENAME, 'w') as configfile:
         CONFIG.write(configfile)
@@ -177,8 +200,11 @@ def update_routine():
 def normalize_external_path(path):
     """Return normalized version of 'path'.
     
-    REMOVE '/' AT ENDS OF PATH
-    REPLACE SEP '\' WITH '/'
+    MUST be used only for external path
+    as .ini, user input, maps.
+
+    Remove '/' at ends of path
+    replace sep '\' with '/'
     """
     r = path.replace("\\","/")
     if r.endswith("/"):
@@ -208,7 +234,7 @@ def _get_bucket(bucket_name):
     except botocore.exceptions.EndpointConnectionError:
         err = TXT_ERR_S3_CONNECTION_ERROR
     except botocore.exceptions.ClientError:
-        err = TXT_ERR_S3_BUCKET_LOAD.format(bucket_name=bucket)
+        err = TXT_ERR_S3_BUCKET_LOAD.format(bucket_name=bucket_name)
     if not err:
         return bucket
     else:
@@ -221,6 +247,61 @@ def _get_bucket_object(s3_path):
         # this method is used to create new object too
         # so it doesn't return explict .get() method
         return S3RESOURCE.Object(bucket, prefix)
+
+
+def exists_master_path(path):
+    """Return bool cheak if 'path' exists in master repository."""
+    f = exists_pc_path if ISMASTER else exists_s3_path
+    return f(path)
+
+def exists_slave_path(path):
+    """Return bool cheak if 'path' exists in slave repository."""
+    f = exists_s3_path if ISMASTER else exists_pc_path
+    return f(path)
+
+def exists_pc_path(path):
+    return os.path.isdir(path)
+
+def exists_s3_path(path):
+    bucket_name, prefix = slipt_s3path(path)
+    bucket = _get_bucket(bucket_name)
+    if bucket:
+        # cheak if prefix exists
+        try:
+            objects = list(bucket.objects.filter(Prefix=prefix).limit(count=1))
+        except:
+            pass
+        else:
+            # cheak if prefix is a 'folder'..
+            # use first element of objects list and test name
+            name_a = path + "/"
+            name_b = "/".join( [bucket_name, objects[0].key ] )
+            return name_a == name_b
+
+def exists_master_file(filepath):
+    """Return bool cheak if 'path' exists in master repository."""
+    f = exists_pc_file if ISMASTER else exists_s3_file
+    return f(filepath)
+
+def exists_slave_file(filepath):
+    """Return bool cheak if 'path' exists in slave repository."""
+    f = exists_s3_file if ISMASTER else exists_pc_file
+    return f(path)
+
+def exists_pc_file(filepath):
+    return os.path.isfile(filepath)
+
+def exists_s3_file(filepath):
+    object = _get_bucket_object(filepath)
+    if object:
+        try:
+            object.load()
+        except:
+            pass
+        else:
+            return 1
+
+
 
 def get_master_file(filepath):
     """Return binary data from 'filepath' in master repository."""
@@ -291,8 +372,6 @@ def ls_s3_path(path):
         yield from ()
     else:
         objname_start_at = len(prefix) + 1
-        # NON CI SONO ECCEZIONI FIO A QUI,
-        # MA CI SONO DOPO SE IL BUCKET NON ESISTE
         for object in bucket.objects.filter(Prefix=prefix):
             name = object.key[objname_start_at:]
             if name != "":
@@ -375,51 +454,32 @@ def mk_s3_object(object_path, data=None):
             else: # directory
                 request = object.put()    
         except Exception as e:
-            print(e)
+            print(e, "[mk_s3_object]")
             enter_to_continue()
         else:
             return request['ResponseMetadata']['HTTPStatusCode'] == 200
 
-def load_maps_from_s3_path(s3_path):
-    """Load maps from 's3_path'.
+def maps_load_from_ini():
+    """Set global var MAPS from configuration file."""
+    s3_path = CONFIG[mode_name(ISMASTER)].get("maps_s3_path")
+    if s3_path:
+        maps = maps_load_from_s3_path(s3_path)
+        return maps
 
-    Return list of xmap
-    """
-    maps = []
-    # support for single files
-    if s3_path.endswith(".json"):
-        s3_path, objects = slipt_s3path(s3_path)
-        objects = (objects,)
-    else:
-        objects = ( obj for obj in ls_s3_path(s3_path) if obj.endswith(".json") )
-    for object in objects:
-        file = get_s3_file("/".join([s3_path, object]))
-        xmap = json.loads(file.decode('utf8'))
-        for m in xmap:
-            m['filename'] = object
-            for prop in ["master","s3", "slave"]:
-                if m.get(prop):
-                    m[prop] = normalize_external_path(m[prop])
-        try:
-            validate_maps(xmap)
-        except Exception as e:
-            print(e, "load_maps_from_s3_path")
-            enter_to_continue()
-        else:
-            maps += xmap
-    # sort must be after validate to keep user debug most efficent.
-    if maps and not CONFIG['MAIN'].getboolean('skip_order_maps'):
-        maps = sorted(maps, key=lambda k:k['name'])
-    return maps
+def maps_reload():
+    global MAPS
+    maps = maps_load_from_ini()
+    if maps:
+        MAPS = maps
+        return 1
 
-def validate_maps(maps):
+def maps_path_validate(path):
+    """check common error of map 'path"""
+    if path[0] == "~":
+        return TXT_ERR_MAP_SUB_USERHOME
+
+def maps_validate(maps):
     """raise excepition if maps error."""
-
-    def _check_path_error(path):
-        """check common error of 'path"""
-        if path[0] == "~":
-            return TXT_ERR_MAP_SUB_USERHOME
-
     if len(maps) == 0:
         raise Exception(TXT_ERR_MAP_EMPTY) 
 
@@ -441,16 +501,50 @@ def validate_maps(maps):
             if not master_path:
                 err = TXT_ERR_MAP_SUB_EMPTY_PROPERTY.format(property='master')
                 raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
-            err = _check_path_error(master_path)
+            err = maps_path_validate(master_path)
             if err:
                raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
         else:
             if not slave_path :
                 err = TXT_ERR_MAP_SUB_EMPTY_PROPERTY.format(property='slave')
                 raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
-            err = _check_path_error(slave_path)
+            err = maps_path_validate(slave_path)
             if err :
                 if err: raise Exception(TXT_ERR_MAP.format(filename=e['filename'],element_id=name, error=err))
+
+def maps_load_from_s3_path(s3_path):
+    """Load maps from 's3_path'.
+
+    Return list of xmap
+    """
+    maps = []
+    # support for single files
+    if s3_path.endswith(".json"):
+        s3_path, objects = slipt_s3path(s3_path)
+        objects = (objects,)
+    else:
+        objects = ( obj for obj in ls_s3_path(s3_path) if obj.endswith(".json") )
+    for object in objects:
+        file = get_s3_file("/".join([s3_path, object]))
+        xmap = json.loads(file.decode('utf8'))
+        for m in xmap:
+            m['filename'] = object
+            for prop in ["master","s3", "slave"]:
+                if m.get(prop):
+                    m[prop] = normalize_external_path(m[prop])
+
+        try:
+            maps_validate(xmap)
+        except Exception as e:
+            print(e, " [maps_load_from_s3_path]")
+            enter_to_continue()
+        else:
+            maps += xmap
+    # sort must be after validate to keep user debug most efficent.
+    if maps and not CONFIG['MAIN'].getboolean('skip_order_maps'):
+        maps = sorted(maps, key=lambda k:k['name'])
+    return maps
+
 
 def execute_cmd(cmd):
     """Execute custom command"""
@@ -459,9 +553,8 @@ def execute_cmd(cmd):
     except Exception as e:
         print(cmd)
         print(e)
-        enter_to_continue()
+    enter_to_continue()
     return 1 # always need return True
-
 def transfer_all():
     for xmap in range(len(MAPS)):
         form_transfer(MAPS[xmap])
@@ -470,54 +563,18 @@ def transfer_all():
 def switch_mode():
     """Switch program mode from MASTER and SLAVE and restart."""
     CONFIG['MAIN']['ismaster'] = str(not ISMASTER)
-    save_config()
+    config_save()
     main()
     # return 0 to force exit to previous form_menu()
-
-def config_ISMASTER():
-    global ISMASTER
-    ISMASTER = None
-    while ISMASTER is None:
-        ISMASTER = input_form_ismaster()
-    CONFIG['MAIN']['ismaster'] = str(ISMASTER)
-    save_config()
-
-def config_MAPS():
-    global MAPS
-    map_s3_path = input_form_maps_s3_path()
-    if map_s3_path:
-        maps = load_maps_from_s3_path(map_s3_path)
-        if maps:
-            MAPS = maps
-            CONFIG[mode_name(ISMASTER)]['maps_s3_path'] = map_s3_path
-            save_config()
-        else:
-            print(TXT_ERR_MAPS_NOT_FOUND.format(path=map_s3_path))
-            enter_to_continue()
-    return 1 # to reopen form_menu
-
-def get_ISMASTER():
+def ismaster_load_from_ini():
     """Set global var ISMASTER from configuration file."""
-    global ISMASTER
     try:
         # can return None in ismaster not Exists
         # can return error if th value is not valid boolena string
-        ISMASTER = CONFIG['MAIN'].getboolean('ismaster')
+        ismaster = CONFIG['MAIN'].getboolean('ismaster')
     except:
-        ISMASTER = None
-
-def get_MAPS():
-    """Set global var MAPS from configuration file."""
-    global MAPS
-    s3_path = CONFIG[mode_name(ISMASTER)].get("maps_s3_path")
-    if s3_path:
-        MAPS = load_maps_from_s3_path(s3_path)
-
-def reload_MAPS():
-    maps = get_MAPS()
-    if maps :
-        MAPS = maps
-    return 1
+        ismaster = None
+    return ismaster
 
 def ignore_rules(rules, jolly="*"):
     """ Load rules and create test function to verify
@@ -550,10 +607,10 @@ def ignore_rules(rules, jolly="*"):
                 e.append(r[1:])
             else:
                 m.append(r)
-        test = ((c , lambda obj, rules: obj.find(rules) > -1),
-            (s , lambda obj, rules: obj.startswith(rules)),
-            (e , lambda obj, rules: obj.endswith(rules)),
-            (m , lambda obj, rules: obj == rules))
+        test = ((c , lambda s1, s2: s1.find(s2) > -1),
+            (s , lambda s1, s2: s1.startswith(s2)),
+            (e , lambda s1, s2: s1.endswith(s2)),
+            (m , lambda s1, s2: s1 == s2))
 
     def _ignore(string):
         """Return true if 'string' match with test rules."""
@@ -573,8 +630,8 @@ def create_obj_xmap_mode(xmap):
         'name' : xmap.get('name'),
         'filename' : xmap.get('filename'),
         'description' : xmap.get('description', ""),
-        'ignore' : xmap.get('ignore', "None"),
-        'files' : xmap.get('files', "ALL"),
+        'ignore' : xmap.get('ignore', "Any"),
+        'files' : xmap.get('files', "All"),
     }
     s3 = {
         'name' : 'REMOTE S3',
@@ -606,8 +663,8 @@ used to create form_menu.
 
 def command_main():
     return [("md", TXT_LABEL_CMD_MD, form_maps_details),
-      ("mr", TXT_LABEL_CMD_MR, reload_MAPS),
-      ("mo", TXT_LABEL_CMD_MO, config_MAPS),
+      ("mr", TXT_LABEL_CMD_MR, form_maps_reload),
+      ("mo", TXT_LABEL_CMD_MO, input_form_global_MAPS),
       ("sm", TXT_LABEL_CMD_SM, switch_mode),
       ("x", TXT_LABEL_CMD_X, lambda: False)]
 
@@ -631,7 +688,6 @@ def command_transfer():
         return main
     return []
 
-
 """
 input_NAME are user forms that return a value
 """
@@ -644,14 +700,18 @@ def input_form_maps_s3_path():
     i = ""
     while i == "":
         clear()
-        i = input(TXT_INPUT_INSERT_MAPS_PATH.format(mode=mode_name(ISMASTER)))
+        if MAPS:
+            msg = TXT_INPUT_INSERT_MAPS_PATH_EXIT
+        else:
+            msg = TXT_INPUT_INSERT_MAPS_PATH
+        i = input(msg.format(mode=mode_name(ISMASTER)))
         if i.lower() == "x":
             return
         i = normalize_external_path(i)
     clear()
     return i
 
-def input_form_ismaster():
+def input_form_global_ISMASTER():
     """Form to ask user the programm mode (MASTER/SLAVE).
 
     Return
@@ -661,98 +721,169 @@ def input_form_ismaster():
             if usere selected SLAVE
 
     """
+    global ISMASTER
     # option value for master mast be "1"!
     clear()
     option = ("1", "0")
     i = None
     while i not in option:
         clear()
-        print(TXT_MENU_MODE.format(inp_master=option[0],
-                info_master=str_action(1), 
-                inp_slave=option[1],
-                info_slave=str_action(0)))
+        print(TXT_LABEL_SELECT_MODE + ":\n")
+        for op in option:
+            n = int(op)
+            print("\t{i} = {name} : {desc}".format(i=n, name=mode_name(n), desc=mode_action(n)))
         i = input(TXT_INPUT_OPTION.format(option=option))
 
+    ISMASTER = int(i)
+    CONFIG['MAIN']['ismaster'] = i
+    config_save()
+    return 1
+
+def input_form_global_MAPS():
     clear()
-    return bool(int(i))
+    global MAPS
+    map_s3_path = input_form_maps_s3_path()
+    if map_s3_path:
+        maps = maps_load_from_s3_path(map_s3_path)
+        if maps:
+            MAPS = maps
+            CONFIG[mode_name(ISMASTER)]['maps_s3_path'] = map_s3_path
+            config_save()
+            form_maps_details()
+        else:
+            print(TXT_ERR_MAPS_NOT_FOUND)
+            enter_to_continue()
+    return 1
 
 """
-form_NAME functions are user form show or execute task
-This form must be return True to return at form_main
-and return False to close form_main.
+form_NAME functions are user form show and/or execute task.
+Must be return 1 to reopen 'form_main'.
+Must be return 0 to close 'form_main'.
 """
+    
+def form_maps_reload():
+    clear()
+    if maps_reload():
+        print(TXT_MAPS_RELOAD_OK)
+        enter_to_continue()
+        form_maps_details()
+        main()
+        return 0 # esc to form_menu
 
+    else:
+        print(TXT_MAPS_RELOAD_KO)
+        enter_to_continue()
+        return 1 # return to form_menu
+
+def _init_path_transfer(info):
+    """Remove and create main slave path"""
+
+    if not CONFIG['MAIN'].getboolean('skip_delete_alert'):
+        print(TXT_DELETE_WARNING.format(
+                storage=info['destination']['name'],
+                path = info['destination']['path']
+                ))
+        confirm = input(TXT_INPUT_TRANSFER_CONFIRM).lower()
+    else:
+        confirm = "y"
+
+    if confirm == "y":
+        print(" INITIALIZE ENVIRONMENT")
+        print(TXT_DELETE_OBJECT.format(storage=info['destination']['name'], object=info['destination']['path']))
+        if not rm_slave_object(info['destination']['path'], ignore_error=1):
+            # error only if slave is S3 and bucket not exixts
+            # if prefix not exists ignore error; it will be created later.
+            # user error message came from rm_slave_object, nothing to show here!
+            return
+
+        print(TXT_CREATE_OBJECT.format(storage=info['destination']['name'], object=info['destination']['path']))
+        # need add '/' to 'mk_slave_object' destination because external
+        # path don't have
+        if not mk_slave_object(info['destination']['path'] + "/"):
+            print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
+            return
+        return 1
+
+def _init_files_transfer(info):
+    # nella modalita dove sono specificati i singoli file
+    # non è permesso sincronizzare il contenuto di una directory
+    #if not delete_main_dir and not obj_data:
+        # specified file
+        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
+        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
+
+    if not CONFIG['MAIN'].getboolean('skip_delete_alert'):
+        print(TXT_TRANSFER_FILES_WARNING.format(
+            storage=info['destination']['name'],
+            path=info['destination']['path'],
+            files=info['map']['files']))
+        return input(TXT_INPUT_TRANSFER_CONFIRM).lower() == "y"
+    else:
+        return True
+    
 def form_transfer(xmap):
     """Transfer data from master to slave
     using information path stored in 'xmap'.
     """
-    def _create_slave_environment():
-        """Remove and create main slave path"""
-        nonlocal info
-        nonlocal destination
-        if not CONFIG['MAIN'].getboolean('skip_delete_alert'):
-            print(TXT_DELETE_WARNING.format(info = info['destination']['name'],
-                    path = destination))
-            confirm = input(TXT_INPUT_DELETE_CONFIRM).lower()
-        else:
-            confirm = "y"
-
-        if confirm == "y":
-            print(" INITIALIZE ENVIRONMENT")
-            print(TXT_DELETE_OBJECT.format(storage=info['destination']['name'], object=info['destination']['path']))
-            if not rm_slave_object(destination, ignore_error=1):
-                # error only if slave is S3 and bucket not exixts
-                # if prefix not exists ignore errror; it will be created later.
-                print(TXT_ERROR_MASTER_PATH_NOT_ERROR.format(dir_name=origin))
-                return
-
-            print(TXT_CREATE_OBJECT.format(storage=info['destination']['name'], object=info['destination']['path']))
-            # need add '/' to 'mk_slave_object' destination because external
-            # path don't have
-            if not mk_slave_object(destination + "/"):
-                print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
-                return
-            return 1
-
+    clear()
     info = create_obj_xmap_mode(xmap)
+    print(TXT_TRANSFER_INFO.format(**info))
+
+
      # not use info[] for 'ignore' and 'files' becasuse in info[] are string
     origin = info['origin']['path'] 
     destination = info['destination']['path']
     ignore_test = ignore_rules(xmap.get("ignore"))
     objects = xmap.get('files')
+    is_path_transfer = not objects
 
+    if not exists_master_path(info['origin']['path']):
+        print(TXT_ERR_MASTER_OBJECT_NOT_EXISTS.format(
+                storage=info['origin']['name'],
+                path = info['origin']['path']
+                ))
+        # enter_to_continue()
+        objects = iter(())
 
-    # if not objects, get all objects in origin path.
-    if objects: 
-        # specified file
-        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
-        # ~~~~~~~~~~ ADD CHECK THAT ALL objects ARE FILES AND NOT DIR ######
-        delete_main_dir = 0
-    else:
-        delete_main_dir = 1
+    elif is_path_transfer: 
+        # !!! if not is_path_transfer, get all objects in origin path.
         objects = ls_master_path(origin)
+    else:
+        # check existence of all files
+        all_exists = True
+        for file in ( "/".join([info['origin']['path'], obj] ) for obj in objects):
+            if not exists_master_file(file):
+                print(TXT_ERR_MASTER_OBJECT_NOT_EXISTS.format(
+                        storage=info['origin']['name'],
+                        path = file
+                        ))
+                all_exists = False
+        if not all_exists:
+            # stop transfer
+            # enter_to_continue()
+            objects = iter(())
+
 
     initialize = 0
 
-    clear()
-    print(TXT_TRANSFER_INFO.format(**info))
     for obj in objects:
+        # Objects for cicle on s3 master return error message and iter(())
+        # if bucket name is wrong!
+        #
+        # Objects is generator, don't give error until first access
+        # for this reason 
+        # '_init_fun' is inside the loop: 
+        # is useful to NOT delete local slave folder
+        # if bucket objects not exists!
 
         obj_data = None if obj.endswith("/") else get_master_file("/".join([origin, obj]))
         obj_fullpath = "/".join([destination, obj])
 
-        # posticipate _create_slave_environment to NOT remove local slave
-        # folder if objects really exists:
-        # objects is generator, don't give error until first access
         if not initialize:
             initialize = 1
-            if delete_main_dir:
-                if not _create_slave_environment():
-                    break  # objects transfer
-
-                # nella modalita dove sono specificati i singoli file
-                # non è permesso sincronizzare il contenuto di una directory
-                #if not delete_main_dir and not obj_data:
+            _init_fun = _init_path_transfer if is_path_transfer else _init_files_transfer
+            if not _init_fun(info):
+                break  # objects transfer
 
         if ignore_test(obj):
             print(TXT_TRANSFER_IGNORE.format(storage=info['destination']['name'], object=obj))
@@ -762,19 +893,19 @@ def form_transfer(xmap):
                 break # objects transfer
 
     else: # object for else
-        if not CONFIG['MAIN'].getboolean('skip_tranfer_detail'):
+        if initialize == 1 and not CONFIG['MAIN'].getboolean('skip_tranfer_detail'):
+            print("\n " + TXT_TRANSFER_COMPLETE)
             enter_to_continue()
-            clear()
             return 1
 
-    print(TXT_WARNING_EXIT_TASK_WITH_ERROR)
+    print("\n " + TXT_WARNING_EXIT_TASK_WITH_ERROR)
     enter_to_continue()
-    clear()
     return 1
 
 def form_maps_details():
     """Show to user loaded maps details."""
     clear()
+    print(TXT_MAPS_DETAILS.format(path=CONFIG[mode_name(ISMASTER)]["maps_s3_path"]))
     for xmap in MAPS:
         info = create_obj_xmap_mode(xmap)
         print(TXT_TRANSFER_INFO.format(**info))
@@ -808,6 +939,8 @@ def form_menu():
 
 def main():
     """Main function"""
+    global ISMASTER
+    global MAPS
 
     clear()
 
@@ -820,22 +953,23 @@ def main():
 
     print(TXT_LOADING.format(what='configuration'))
     if not CONFIG.read(CONFIG_FILENAME):
-        load_default_config()
-        save_config()
+        ini_load_default()
+        config_save()
     else:
-        validate_config()
+        ini_validate()
 
     print(TXT_LOADING.format(what='mode'))
-    get_ISMASTER()
-    if ISMASTER is None: config_ISMASTER()
+
+    ISMASTER = ismaster_load_from_ini()
+    while ISMASTER is None:
+        input_form_global_ISMASTER()
 
     print(TXT_LOADING.format(what='maps'))
-    get_MAPS()
+    MAPS = maps_load_from_ini()
     while MAPS is None:
-        config_MAPS()
+        input_form_global_MAPS()
             
     form_menu()
-
 
 
 if __name__ == "__main__":
