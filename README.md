@@ -1,7 +1,8 @@
 # S32S
 
-S32s è un programma ad interfaccia a riga di comando scritto in Python3
-che serve a gestire i trasferimenti di dati tra computer MASTER
+S32s è un programma scritto in Python3
+che serve a gestire, tramite interfaccia a riga di comando (CLI),
+i trasferimenti di dati tra computer MASTER
 e uno o più computer SLAVE che utilizza AWS S3
 come middleware e una mappatura di percorsi.
 
