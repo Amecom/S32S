@@ -1,7 +1,9 @@
 # S32S
 
-Script Python3 per gestire trasferimenti di dati tra computer utilizzando AWS S3
-come middleware e mappature di percorsi.
+S32s è un programma ad interfaccia a riga di comando scritto in Python3
+che serve a gestire i trasferimenti di dati tra computer MASTER
+e uno o più computer SLAVE che utilizza AWS S3
+come middleware e una mappatura di percorsi.
 
 Il computer MASTER trasferisce i file locali su AWS S3
 mentre il computer SLAVE recupera e salva localmente i file presenti su AWS S3.
@@ -176,38 +178,9 @@ non ha senso ed è pericoloso per i proprio dati.
 
 ## File 's32s.ini'
 
-La modifica del file s32s.ini, facoltativa, permette di disattivare
-alcune funzionalità che permettono ad esempio di velocizzare l'esecuzione dei task di upload e download.
-
-Esempio file s32s.ini
-```
-[MAIN]
-skip_order_maps = False
-skip_delete_alert = False
-skip_tranfer_detail = False
-ismaster = True
-time_sleep_after_rm = 3
-
-[MASTER]
-maps_s3_path = bucketname/spam/site
-
-[SLAVE]
-maps_s3_path = bucketname/spam/site_data
-
-[CUSTOMCOMMAND]
-
-```
-
-Nel blocco [MAIN] del file s32s.ini troviamo:
-
-| Var | Type | Descrizione |
-| --- | --- | --- |
-| `ismater` | bool | True per eseguire il programma in modalità master. |
-| `skip_delete_alert` | bool | True nasconde gli alert di cancellazione dei dati. |
-| `skip_order_maps` | bool | True evita l'ordinamento alfabetico dei percorsi di mappatura per proprietà 'name'. |
-| `skip_tranfer_detail` | bool | True nasconde il riepilogo del trasfemento. |
-| `time_sleep_after_rm` | int | Numero di secondi di attesa tra un comando di eliminazione e un operazione di scrittura. Questo dipende in parte dal tempo che il sistema necessita per completare il task di elminazione di una directory. Se si riscontrano problemi nella gestione dei file locali in modalità slave si può aumentare questo valore. |
-
+La modifica del file s32s.ini nella maggior parte delle sue opzioni è configurabile
+attraverso 'l'interfaccia del programma
+alcune funzionalità permettono di velocizzare l'esecuzione dei task di upload e download.
 
 ### Custom command
 
