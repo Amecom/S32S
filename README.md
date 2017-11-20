@@ -9,6 +9,10 @@ Il computer MASTER trasferisce i file locali su AWS S3
 mentre il computer SLAVE recupera e salva localmente i file presenti su AWS S3.
 La sincronizzazione dei dati non è automatica ma a comando.
 
+## Screeshot
+
+![S32S Screenshot](screenshot.png?raw=true)
+
 ## Flusso dati
 
 ```
