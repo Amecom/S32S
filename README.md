@@ -1,9 +1,8 @@
 # S32S
 
 S32S è un programma ad interfaccia a riga di comando (CLI) scritto in Python3
-per automatizzare attraverso una mappatura di percorsi,
-trasferimenti di dati tra computer MASTER
-e uno o più computer SLAVE che AWS S3
+per automatizzare, attraverso una mappatura dei percorsi,
+i trasferimenti di directory tra computers utilizzando AWS S3
 come middleware e repository a lungo termine.
 
 Il computer MASTER trasferisce i file locali su AWS S3
@@ -13,10 +12,22 @@ La sincronizzazione dei dati non è automatica ma a comando.
 ## Flusso dati
 
 ```
-MASTER >> S3 >> SLAVE
+MASTER >> MIDDLEWARE S3 >> SLAVE
 
 ORIGINALE >> REPOSITORY >> COPIA
 ```
+- **Master**
+Contiene i file originali e ed è il repository di sviluppo. Quando un progetto è pronto per essere 
+distribuito il programma carica i dati sul middleware S3.
+
+- **Middleware S3**
+Riceve i dati dal computer master e crea un repository a lungo termine, sicuro e
+sempre online da cui i computers slave possono attingere.
+
+- **Slave**
+Prelevano dati dal middleware. Il
+caricamento dei dati sulle macchine slave è fatto manualmente tuttavia è possibile ricreare o aggiornare
+la macchina tramite un solo comando del programma.
 
 ## ATTENZIONE
 

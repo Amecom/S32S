@@ -40,7 +40,7 @@ TXT_TRANSFER_INFO = """
 """
 TXT_LABEl_CONFIGURATION = "Configuration"
 TXT_SORT_MAPS_ALPHABETICALLY = "Sort the maps alphabetically"
-TXT_HIDE_DEL_ALERT = "Slert delete"
+TXT_HIDE_DEL_ALERT = "Alert delete"
 TXT_HIDE_TRANSFER_DETAIL = "Show transfer details"
 TXT_DEFAULT_VALUE = "DEFAULT VALUE"
 TXT_CURRENT_STATUS = "Current status is {status}"
@@ -61,8 +61,9 @@ TXT_LABEL_MAIN_COMMAND = "Main command"
 TXT_LABEL_CUSTOM_COMMAND = "Custom command"
 TXT_LABEL_TRANFER_LIST = "Transfer command"
 TXT_NEW_SCRIPT_VERSION_AVAILABLE = "New version of programm is available"
-TXT_SCRIPT_UPDATED = "New programm has been downloaded. Old files still exists renamed {old_name}"
-TXT_RESTART = "Restart script."
+TXT_SCRIPT_UPDATED = "New programm has been downloaded"
+TXT_OLD_SCRIPT_RENAME = "Old files still exists renamed {old_name}"
+TXT_RESTART = "Restart script"
 TXT_MODE_INFO = "*** {mode} MODE *** S3 Maps Path loaded: '{mapspath}'"
 TXT_EXECUTE_CMD = "EXECUTE: {cmd}"
 TXT_ACTION_MASTER = "Replace s3 object with local ones"
@@ -73,20 +74,18 @@ TXT_DELETE_OBJECT = "{storage} DELETE: {object}"
 TXT_CREATE_OBJECT = "{storage} CREATE: {object}"
 TXT_SAVE_OBJECT = "{storage} SAVE IN '{root}' OBJECT: '{object}'"
 TXT_TRANSFER_IGNORE = "{storage} IGNORE: {object}"
-
 TXT_INPUT = "Enter command"
 TXT_INPUT_OPTION = "Enter input {option}"
-TXT_INPUT_ENTER = "Press ENTER to continue..."
+TXT_INPUT_ENTER = "Press ENTER to continue"
 TXT_INPUT_INSERT_MAPS_PATH = "Insert S3 path contains maps files for '{mode}'"
 TXT_INPUT_INSERT_MAPS_PATH_EXIT = "Insert S3 path contains maps files for '{mode}' [x to Exit]"
 TXT_INPUT_CONFIRM = "Enter 'y' to confirm, anything else to skip task" 
-
 TXT_WARNING_EXIT_TASK_WITH_ERROR = "Task not completed"
 TXT_WARNING_MAPS_NOT_LOADED = "'{mode}' MAPS  not loaded, use 'mo' command to open maps"
 TXT_WARNING_TRANSFER = "'{files}' in {storage} : '{path}' Will be DELETE and REPLACED"
-
 TXT_ERR_MASTER_OBJECT_NOT_EXISTS = "Path object '{path}' not exists in '{storage}'"
-TXT_ERR_S3_CONNECTION_ERROR = "Could not connect to S3. Verify your internet connection and try again"
+TXT_ERR_S3_CONNECTION_ERROR = "Could not connect to S3"
+TXT_ERR_INTERNET_CONNECTION = "Verify your internet connection and try again"
 TXT_ERR_S3_BUCKET_LOAD = "S3 Bucket '{bucket_name}' NOT FOUND"
 TXT_ERR_S3_LIST_CONNECTION = "S3 PATH '{path}': bucket not found or access denied or no internet access"
 TXT_ERR_S3_LIST_CONTENTS = "S3 PATH '{path}': path does not have a contents or not exists"
@@ -98,16 +97,14 @@ TXT_ERR_MAP = "Filename: '{filename}' Maps Element: '{element_id}': {error}"
 TXT_ERR_MAP_SUB_USERHOME = "Path can't start with ~"
 TXT_ERR_MAP_SUB_EMPTY_PROPERTY = "'{property}' property is mandatory'" 
 
-CONFIG_SECTION = ("MAIN", "MASTER", "SLAVE", "CUSTOMCOMMAND" )
-CONFIG_MAIN_OPTIONS = (
-    # option name, label, default value 
+CONFIG_SECTION = ("MAIN", "MASTER", "SLAVE", "CUSTOMCOMMAND")
+CONFIG_MAIN_OPTIONS = (# option name, label, default value
     ("ismaster", TXT_SORT_MAPS_ALPHABETICALLY, 1),
     ("order_maps", TXT_SORT_MAPS_ALPHABETICALLY, 1),
     ("show_delete_alert", TXT_HIDE_DEL_ALERT, 1),
     ("show_transfer_detail", TXT_HIDE_TRANSFER_DETAIL, 1),    
-    ("time_sleep_after_rm", TXT_HIDE_TRANSFER_DETAIL, 3)    
-)
-CONFIG_MAIN_BOOLEAN = ["ismaster", "order_maps", "show_delete_alert", "show_transfer_detail" ]
+    ("time_sleep_after_rm", TXT_HIDE_TRANSFER_DETAIL, 3))
+CONFIG_MAIN_BOOLEAN = ["ismaster", "order_maps", "show_delete_alert", "show_transfer_detail"]
 CONFIG_MAIN_NUMERIC = ["time_sleep_after_rm"]
 
 class bcolors:
@@ -155,7 +152,7 @@ def print_blue(txt):
     print(bcolors.OKBLUE + " " + txt + bcolors.ENDC)
 
 def input_text(txt):
-    return input( bcolors.BOLD + "\n > " + txt  + " :" + bcolors.ENDC)
+    return input(bcolors.BOLD + "\n > " + txt + " :" + bcolors.ENDC)
 
 def enter_to_continue():
     """Create a break to allow the user to read output."""
@@ -247,7 +244,8 @@ def update_routine():
     os.replace(script_path, script_path_old)
     sleep(2)
     urllib.request.urlretrieve(URL_SCRIPT, script_path)
-    print_success(TXT_SCRIPT_UPDATED.format(old_name=rename_old))
+    print_success(TXT_SCRIPT_UPDATED)
+    print_success(TXT_OLD_SCRIPT_RENAME.format(old_name=rename_old))
     print_blue(TXT_RESTART)
 
 def normalize_external_path(path):
@@ -282,26 +280,18 @@ def _get_bucket(bucket_name):
     # err = None
     bucket = VALID_BUCKETS.get(bucket_name)
     if not bucket:
-
-        if S3RESOURCE.Bucket(bucket_name) in S3RESOURCE.buckets.all():
-            bucket = S3RESOURCE.Bucket(bucket_name)
-            VALID_BUCKETS[bucket_name] = bucket
+        try:
+            loaded = S3RESOURCE.Bucket(bucket_name) in S3RESOURCE.buckets.all()
+        except botocore.exceptions.EndpointConnectionError:
+            print_error(TXT_ERR_INTERNET_CONNECTION)
         else:
-            print_error( TXT_ERR_S3_BUCKET_LOAD.format(bucket_name=bucket_name) )
-            return
+            if loaded:
+                bucket = S3RESOURCE.Bucket(bucket_name)
+                VALID_BUCKETS[bucket_name] = bucket
+            else:
+                print_error(TXT_ERR_S3_BUCKET_LOAD.format(bucket_name=bucket_name))
+                return
     return bucket
-                #try:
-                #    bucket.load()
-                #except botocore.exceptions.EndpointConnectionError:
-                #    err = TXT_ERR_S3_CONNECTION_ERROR
-                #except botocore.exceptions.ClientError:
-                #    err = TXT_ERR_S3_BUCKET_LOAD.format(bucket_name=bucket_name)
-                #else:
-                #    VALID_BUCKETS[bucket_name] = bucket
-    #if err:
-    #    print_error(err)
-    #else:
-    #    return bucket
 
 def _get_bucket_object(s3_path):
     bucket, prefix = slipt_s3path(s3_path)
@@ -686,7 +676,7 @@ def create_obj_xmap_mode(xmap):
 def _init_path_transfer(info):
     """Remove and create main slave path"""
     if CONFIG['MAIN'].getboolean('show_delete_alert'):
-        print_warning(TXT_WARNING_TRANSFER.format( storage=info['destination']['name'], path=info['destination']['path'], files="ALL FILES" ))
+        print_warning(TXT_WARNING_TRANSFER.format(storage=info['destination']['name'], path=info['destination']['path'], files="ALL FILES"))
         confirm = input_text(TXT_INPUT_CONFIRM).lower() == "y"
     else:
         confirm = 1
@@ -704,7 +694,7 @@ def _init_path_transfer(info):
         # need add '/' to 'mk_slave_object' destination because external
         # path don't have
         if not mk_slave_object(info['destination']['path'] + "/"):
-            print_warning(TXT_WARNING_EXIT_TASK_WITH_ERROR) # POSSIBILE DUPLICATO 
+            print_warning(TXT_WARNING_EXIT_TASK_WITH_ERROR) # POSSIBILE DUPLICATO
             return
         return 1
 
@@ -723,19 +713,15 @@ used to create form_menu.
 
 def command_main(maps):
     if maps:
-        map_opt = [
-        ("md", TXT_LABEL_CMD_MD, lambda maps=maps: form_maps_details(maps)),
-        ("mr", TXT_LABEL_CMD_MR, input_form_maps_reload)            
-        ]
+        map_opt = [("md", TXT_LABEL_CMD_MD, lambda maps=maps: form_maps_details(maps)),
+        ("mr", TXT_LABEL_CMD_MR, input_form_maps_reload)]
     else:
         map_opt = []
 
-    ever_opt = [
-      ("mo", TXT_LABEL_CMD_MO, input_form_maps),
-      ("sm", TXT_LABEL_CMD_SM, form_switch_mode),
-      ("ad", "Advanced", form_advanced),
-      ("x", TXT_LABEL_CMD_X, lambda: "x")
-      ]
+    ever_opt = [("mo", TXT_LABEL_CMD_MO, input_form_maps),
+      ("s", TXT_LABEL_CMD_SM, form_switch_mode),
+      ("a", "Advanced", form_advanced),
+      ("x", TXT_LABEL_CMD_X, lambda: "x")]
     return map_opt + ever_opt
 
 def command_custom():
@@ -760,11 +746,11 @@ def command_transfer(maps):
 
 def command_advanced():
     cmd = []
-    hide_option_name = ["ismaster", "time_sleep_after_rm" ]
+    hide_option_name = ["ismaster", "time_sleep_after_rm"]
     list_option = [ x for x in CONFIG_MAIN_OPTIONS if x[0] not in hide_option_name ]
 
     print_title(TXT_LABEl_CONFIGURATION)
-    for n, v in enumerate( list_option ) :
+    for n, v in enumerate(list_option) :
         option, label, default = v
         current_value = CONFIG['MAIN'].getboolean(option)
         execmd = lambda n=option: config_switch_main_bool(n)
@@ -879,7 +865,6 @@ def form_switch_mode():
     print_success(TXT_SWITH_CONFIRM.format(mode_name=mode_name()))
     config_save()
     return 1 # return 1 to force reload main()
-
 def form_transfer_all(maps):
     count_xmap = len(maps)
     x = 0
@@ -908,7 +893,7 @@ def form_transfer(xmap, as_subform=0):
 
     print_text(TXT_TRANSFER_INFO.format(**info))
 
-     # not use info[] for 'ignore' and 'files' becasuse in info[] are string
+     # not use info[] for 'ignore' and 'files' because in info[] are string
     origin = info['origin']['path'] 
     destination = info['destination']['path']
     ignore_test = ignore_rules(xmap.get("ignore"))
@@ -964,22 +949,11 @@ def form_transfer(xmap, as_subform=0):
             else:
                 return
 
-        #if initialize == 1 and not CONFIG['MAIN'].getboolean('show_transfer_detail'):
-
-        #    print_success(TXT_TRANSFER_COMPLETE)
-        #    input("................")
-        #    if as_subform:
-        #        return 1
-        #    else:
-        #        return
-
     # here if cicle inclomplete or not 'initializate' == 0
     print_warning(TXT_WARNING_EXIT_TASK_WITH_ERROR)
     if as_subform:
         return 0
     # else return None
-
-
 def form_maps_details(maps):
     """Show to user loaded maps details."""
     print_header(TXT_MAPS_DETAILS.format(path=CONFIG[mode_name()]["maps_s3_path"]))
