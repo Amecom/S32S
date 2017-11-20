@@ -1,12 +1,11 @@
 # S32S
 
-S32S is a multi-platform, command-line interface (CLI) program written in Python3
-to automate, through mapping the paths,
-transfers between computers using AWS S3
+S32S is Python3 command-line interface (CLI) program to automate
+data transfers, through routing paths, between master and slave computers using AWS S3
 as middleware and long-term repository.
 
 
-## Screeshot
+## Screenshot
 
 ![S32S Screenshot](https://raw.githubusercontent.com/Amecom/S32S/master/screenshot.png)
 
@@ -22,11 +21,11 @@ distributed program loads data on S3 middleware.
 
 
 - **Middleware S3**:
-Receive data from the master computer and create a long-term, secure, and high-reliability repository
+Receive data from the master computer to create a long-term, secure, and high-reliability repository
 from which slave computers can retrieve data.
 
 - **Slave**:
-The slave computers, by order of the program, download the desired data from the middleware S3.
+The slave computers download the desired data from the middleware S3.
 You can recreate or upgrade a machine with just one command.
 
 ## CAUTION
@@ -38,8 +37,8 @@ use, modification, or error in the program.
 
 ## Note on S3 paths
 
-Libraries using AWS S3, as Boto3, usually relate
-to an object specifying the name of the 'bucket' and a 'prefix' separately.
+Libraries, as Boto3, usually relate
+to an AWS S3 object specifying the name of the 'bucket' and a 'prefix' separately.
 In this context a **path S3 intends
 a single string consisting of 'nomebucket' + '/' + 'prefix' **
 example `namebucket/prefix/file.ext`.
@@ -56,7 +55,7 @@ $ python3 s32s.py
 
 - Python 3.x
 - Package [Boto3] (https://github.com/boto/boto3)
-- Mapping file
+- Routing file
 
 ## Install Boto3
 
@@ -73,10 +72,10 @@ aws_secret_access_key = MY_SECRET_KEY
 
 More info on [guida BOTO3](https://github.com/boto/boto3).
 
-## Create a mapping file
+## Create a routing file
 
-The mapping file is a JSON file that contains a list of map objects.
-A map object describes independent paths and consists of the following properties:
+The routing JSON file contains a list of map objects.
+A map object describes master, slave and S3 paths:
 
 | Property | Mandatory | Description |
 | --- | --- | --- |
@@ -87,7 +86,7 @@ A map object describes independent paths and consists of the following propertie
 | `slave` | YES IF SLAVE | Files directory on the SLAVE computer |
 | `ignore` | NO | Exclusion rules of the paths |
 
-Sample File 'mapping.json':
+Sample File 'routing.json':
 ```json
 [
     {
@@ -109,11 +108,11 @@ Sample File 'mapping.json':
 ]
 ```
 
-The "mapping.json" file contains two maps.
+The sample file "routing.json" file contains two maps.
 
-- 'MAP 1' synchronizes all objects in "c:/path/dir/master/1"
-on path S3 "bucketname / backup / dir1" and path S3 on the SLAVE directory "/path/slave/dir1".
-It contains the 'ignore' directives to exclude items during transfer.
+- 'MAP 1' synchronizes all objects in (windows) "c:/path/dir/master/1"
+on path S3 "bucketname / backup / dir1" and path S3 on the SLAVE directory (unix)
+"/path/slave/dir1". It contains the 'ignore' directives to exclude items during transfer.
 
 - 'MAP 2' through the 'files' property specifies the individual files
 which you want to copy from the master directory "c:/path/dir/master/2".
@@ -128,13 +127,13 @@ IMPORTANT:
 	- The destination directory must exist. It will not be created.
 	- The files contained in the destination directory, if they are not included in the list 'files', are preserved.
 
-### Save the mapping file
+### Save the routing file
 
-The mapping file is shared between MASTER and SLAVE for this reason
-must be saved in an S3 path example `bucketname/spam/foo/maps/mapping.json`.
+The routing file is shared between MASTER and SLAVE for this reason
+must be saved in an S3 path example `bucketname/spam/foo/maps/routing.json`.
 
-When requesting a map of paths you can enter the S3 path of a file or directory.
-In the second case all mapping files in the directory will be loaded.
+When requesting a rouing file you can enter the S3 path of a file or directory.
+In the second case all routing files in the directory will be loaded.
 
 ## Ignore property
 
