@@ -88,7 +88,7 @@ A map object describes independent paths and consists of the following propertie
 | `ignore` | NO | Exclusion rules of the paths |
 
 Sample File 'mapping.json':
-```
+```json
 [
     {
       "name": "MAP 1",
@@ -172,7 +172,7 @@ a command to restart the httpd service.
 To do this just add it in the s32s.ini file under the [CUSTOMCOMMAND]
 the following line:
 
-```
+```ini
 [CUSTOMCOMMAND]
 http_restart = sudo service httpd restart
 ```
