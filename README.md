@@ -1,95 +1,93 @@
 # S32S
 
-S32S è un programma multipiattaforma ad interfaccia a riga di comando (CLI) scritto in Python3
-per automatizzare, attraverso una mappatura dei percorsi,
-i trasferimenti di directory tra computers utilizzando AWS S3
-come middleware e repository a lungo termine.
+S32S is a multi-platform, command-line interface (CLI) program written in Python3
+to automate, through mapping the paths,
+transfers between computers using AWS S3
+as middleware and long-term repository.
+
 
 ## Screeshot
 
 ![S32S Screenshot](https://raw.githubusercontent.com/Amecom/S32S/master/screenshot.png)
 
-## Flusso dati
+## Data flow
 
 ```
 COMPUTER MASTER >> MIDDLEWARE S3 >> COMPUTERS SLAVE
 ```
 
 - **Master**:
-Il computer master contiene i file originali. Quando un progetto è pronto per essere 
-distribuito si ordina al programma di caricare i dati sul middleware S3.
+The master computer contains the original files. When a project is ready to be
+distributed program loads data on S3 middleware.
+
 
 - **Middleware S3**:
-Riceve i dati dal computer master e crea un repository a lungo termine, sicuro e ad alta affidabilità
-da cui i computers slave possono prelevare i dati.
+Receive data from the master computer and create a long-term, secure, and high-reliability repository
+from which slave computers can retrieve data.
 
 - **Slave**:
-I computers slave, su ordine del programma, prelevano i dati desiderati dal middleware S3.
-È possibile ricreare o aggiornare una macchina tramite un solo comando.
+The slave computers, by order of the program, download the desired data from the middleware S3.
+You can recreate or upgrade a machine with just one command.
 
-## ATTENZIONE
-
-Il programma include **routine che eliminano intere directory** dal computer SLAVE
-e dal bucket AWS S3 di cui si fornisce l'accesso. 
-L'autore non è responsabile di eventuali perdite di dati causati
-dall'uso, dalla modifica o da errori del programma.
-
-## Nota sui percosi S3
-
-Le librerie che utilizzano AWS S3 come Boto3 solitamente si riferiscono 
-ad un oggetto specificando separatamente il nome del 'bucket' e un 'prefix'. 
-In questo contesto un **percorso S3 intende 
-un'unica stringa composta da 'nomebucket' + '/' + 'prefix'**
-esempio `nomebucket/prefix/file.ext`. 
+## CAUTION
+The program includes **routines that delete whole directories** from the slave computers
+and from the AWS S3 bucket provided with access.
+The author is not liable for any loss of data caused
+use, modification, or error in the program.
 
 
-# Installazione
+## Note on S3 paths
 
-Il programma non deve essere installato è sufficiente scaricalo ed eseguirlo come script python3.
+Libraries using AWS S3, as Boto3, usually relate
+to an object specifying the name of the 'bucket' and a 'prefix' separately.
+In this context a **path S3 intends
+a single string consisting of 'nomebucket' + '/' + 'prefix' **
+example `namebucket/prefix/file.ext`.
 
+# Installation
+
+The program should not be installed, just download it and run it as python3 script.
 ```
 $ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
 $ python3 s32s.py
 ```
 
-## Requisiti
+## Requirements
 
 - Python 3.x
-- Package [Boto3](https://github.com/boto/boto3)
-- File di mappatura percorsi
+- Package [Boto3] (https://github.com/boto/boto3)
+- Mapping file
 
-## Installare Boto3
+## Install Boto3
 
 ```
 $ pip install boto3
 ```
-
-L'utilizzo della libreria BOTO3 da parte del programma
-richiede la creazione di un file ```~/.aws/credentials``` simile a questo:
-
+The use of BOTO3 in the program
+requires the creation of a ```~/.aws/credentials``` file similar to this:
 ```
 [default]
 aws_access_key_id = MY_ACCESS_KEY
 aws_secret_access_key = MY_SECRET_KEY
 ```
 
-Maggiori informazioni su [guida BOTO3](https://github.com/boto/boto3).
+More info on [guida BOTO3](https://github.com/boto/boto3).
 
-## Creare un file di mappatura
+## Create a mapping file
 
-Il file di mappatura è un file JSON che contiene una lista di oggetti mappa.
-Una oggetto mappa descrive percorsi indipendente ed è formato dalle seguenti proprietà:
+The mapping file is a JSON file that contains a list of map objects.
+A map object describes independent paths and consists of the following properties:
 
 | Property | Mandatory | Description |
 | --- | --- | --- |
 | `name` | YES | Map name |
 | `description` | NO  | Map description |
-| `s3` | YES | Percorso S3 dove verranno conservati i dati. |
-| `master` | YES IF MASTER | Directory dei files sul computer MASTER che verranno trasferiti su S3. |
-| `slave` | YES IF SLAVE | Directory del computer SLAVE in cui verranno copiati i file recuperati da S3. |
-| `ignore` | NO | Regole di esclusione dei percorsi. |
+| `s3` | YES | S3 path where the data will be stored |
+| `master` | YES IF MASTER | Files directory on the MASTER computer |
+| `slave` | YES IF SLAVE | Files directory on the SLAVE computer |
+| `ignore` | NO | Exclusion rules of the paths |
 
-Esempio file 'mapping.json':
+Sample File 'mapping.json':
 ```
 [
     {
@@ -111,76 +109,71 @@ Esempio file 'mapping.json':
 ]
 ```
 
-Il file "mapping.json" contiene due mappe.
+The "mapping.json" file contains two maps.
 
-- 'MAP 1' sincronizza tutti gli oggetti presenti in "c:/path/dir/master/1"
-sul percorso S3 "bucketname/backup/dir1" e dal percorso S3 sulla directory SLAVE "/path/slave/dir1".
-Contiene delle direttive 'ignore' per escludere degli oggetti durante il trasferimento.
+- 'MAP 1' synchronizes all objects in "c:/path/dir/master/1"
+on path S3 "bucketname / backup / dir1" and path S3 on the SLAVE directory "/path/slave/dir1".
+It contains the 'ignore' directives to exclude items during transfer.
 
-- 'MAP 2' tramite la proprietà 'files' specifica i singoli file
-che si vuole copiare dalla directory master "c:/path/dir/master/2".
+- 'MAP 2' through the 'files' property specifies the individual files
+which you want to copy from the master directory "c:/path/dir/master/2".
 
-IMPORTANTE:
+IMPORTANT:
 
-- Quando è specificato solo il percorso della directory (MAP 1) allora:
-	- Se la directory di destinazione non esiste verrà creata.
-	- Se esiste verrà cancellata, e con essa tutti i files contenuti, e ricreata con i nuovi files.
+- When only the path of the directory (MAP 1) is specified then:
+	- If the destination directory does not exist, it will be created.
+	- If it exists it will be deleted, with all the files contained, and recreated with the new files.
 
-- Quando è specificata una lista di files (MAP 2) allora:
-	- La directory di destinazione deve esistere. Non verrà creata.
-	- I files contenuti nella directory destinazione, se non sono inclusi nella lista 'files', sono conservati.
+- When a list of files (MAP 2) is specified then:
+	- The destination directory must exist. It will not be created.
+	- The files contained in the destination directory, if they are not included in the list 'files', are preserved.
 
-### Salvare il file di mappatura
+### Save the mapping file
 
-Il file di mappatura è condiviso tra MASTER e SLAVE per questo motivo
-deve essere salvato in un percorso S3 esempio `bucketname/spam/foo/maps/mapping.json`.
+The mapping file is shared between MASTER and SLAVE for this reason
+must be saved in an S3 path example `bucketname/spam/foo/maps/mapping.json`.
 
-Alla richiesta di inerimento di una mappa di percorsi
-è possibile inserire il percorso S3 di un file o di una directory.
-Nel secondo caso verranno caricati tutti i file mappatura presenti nella directory.
+When requesting a map of paths you can enter the S3 path of a file or directory.
+In the second case all mapping files in the directory will be loaded.
 
+## Ignore property
 
-## Proprietà ignore
+The property ignore, if expressed, is a list of filter rules of objects as not to transfer.
 
-La proprietà ignore, se espressa, è una lista di regole di filtro degli oggetti da non trasferire.
-
-È possibile utilizzare il carattere jolly '*' in questo modo:
+You can use the wildcard '*' in this way:
 
 | Examples | Description |
 | --- | --- |
-| `string*` | esclude i percorsi che iniziano con 'string' |
-| `*string*`| esclude i percorsi che contengono 'string' |
-| `*string` | esclude i percorsi che finiscono con 'string' |
+| `string*` | Excludes paths that start with 'string' |
+| `*string*`| Excludes paths that contain with 'string' |
+| `*string` | Excludes paths that ending with 'string' |
 
-
-ATTENZIONE. Il carattere jolly non agisce sul nome del file ma sul percorso relativo
-alla directory principale. Esempio se la direcotry 'master' è `/data/foo`
-ed esiste un file `/data/foo/spam/dir/picure.jpg`, la direttiva ignore viene applicata
-alla stringa `spam/dir/picture.jpg` e NON a `picture.jpg` o `/spam/dir/picture.jpg`.
-
+NOTE. The wildcard does not work on the file name but on the relative path
+to the root directory. Example if the direcotry 'master' is `/date/foo`
+and there is a `/data/foo/spam/dir/picure.jpg` file, the ignore directive is applied
+to the string `spam/dir/picture.jpg` and NOT to `picture.jpg` or `/spam/dir/picture.jpg`.
 
 ## File 's32s.ini'
 
-Alla prima esecuzione del programma viene creato un file s32s.ini.
+At the first run of the program, a s32s.ini file is created.
 
-La maggior parte delle opzioni presenti nel file s32s.ini sono configurabili
-dall'interfaccia. Tuttavia è possibile aggiungere comandi personalizzati 
-inserendo instruzioni nel file .ini
+Most options in the s32s.ini file are configurable
+from interface. However, you can add custom commands
+inserting instructions into the .ini file
 
 ### Custom command
 
-È possibile aggiungere nell'interfaccia del programma dei comandi 
-personalizzati da richiamare senza uscire dal programma stesso.
+You can add it to the program interface
+customized command to call without leaving the program itself.
 
-Esempio: il computer SLAVE è un web server APACHE
-su cui vengono caricati dal middleware S3 i file aggiornati di un sito web. 
-In questo esempio potrebbe essere utile inserire nell'interfaccia
-un comando per riavviare il servizio httpd.
-Per fare questo basta aggiungere nel file s32s.ini sotto il blocco [CUSTOMCOMMAND]
-la seguente riga:
+Example: The SLAVE computer is an APACHE web server.
+It may be useful to insert into the interface
+a command to restart the httpd service.
+To do this just add it in the s32s.ini file under the [CUSTOMCOMMAND]
+the following line:
 
 ```
 [CUSTOMCOMMAND]
 http_restart = sudo service httpd restart
 ```
-È possibile inserire un numero illimitato di comandi su righe diverse.
+You can enter different commands on different rows.

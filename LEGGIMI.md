@@ -34,7 +34,7 @@ e dal bucket AWS S3 di cui si fornisce l'accesso.
 L'autore non è responsabile di eventuali perdite di dati causati
 dall'uso, dalla modifica o da errori del programma.
 
-## Nota sui percosi S3
+## Nota sui percorsi S3
 
 Le librerie che utilizzano AWS S3 come Boto3 solitamente si riferiscono 
 ad un oggetto specificando separatamente il nome del 'bucket' e un 'prefix'. 
