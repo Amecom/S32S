@@ -11,7 +11,7 @@ La sincronizzazione dei dati non è automatica ma a comando.
 
 ## Screeshot
 
-![S32S Screenshot](screenshot.png?raw=true)
+![S32S Screenshot](https://raw.githubusercontent.com/Amecom/S32S/master/screenshot.png)
 
 ## Flusso dati
 
