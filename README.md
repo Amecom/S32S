@@ -1,13 +1,9 @@
 # S32S
 
-S32S è un programma ad interfaccia a riga di comando (CLI) scritto in Python3
+S32S è un programma multipiattaforma ad interfaccia a riga di comando (CLI) scritto in Python3
 per automatizzare, attraverso una mappatura dei percorsi,
 i trasferimenti di directory tra computers utilizzando AWS S3
 come middleware e repository a lungo termine.
-
-Il computer MASTER trasferisce i file locali su AWS S3
-mentre il computer SLAVE recupera e salva localmente i file presenti su AWS S3.
-La sincronizzazione dei dati non è automatica ma a comando.
 
 ## Screeshot
 
@@ -16,22 +12,20 @@ La sincronizzazione dei dati non è automatica ma a comando.
 ## Flusso dati
 
 ```
-MASTER >> MIDDLEWARE S3 >> SLAVE
-
-ORIGINALE >> REPOSITORY >> COPIA
+COMPUTER MASTER >> MIDDLEWARE S3 >> COMPUTERS SLAVE
 ```
-- **Master**
-Contiene i file originali e ed è il repository di sviluppo. Quando un progetto è pronto per essere 
-distribuito il programma carica i dati sul middleware S3.
 
-- **Middleware S3**
+- **Master**:
+Contiene i file originali. Quando un progetto è pronto per essere 
+distribuito si ordina al programma di carica i dati sul middleware S3.
+
+- **Middleware S3**:
 Riceve i dati dal computer master e crea un repository a lungo termine, sicuro e
 sempre online da cui i computers slave possono attingere.
 
-- **Slave**
-Prelevano dati dal middleware. Il
-caricamento dei dati sulle macchine slave è fatto manualmente tuttavia è possibile ricreare o aggiornare
-la macchina tramite un solo comando del programma.
+- **Slave**:
+Su ordine il programma prelva i dati desiderati dal middleware S3.
+È possibile ricreare o aggiornare una macchina tramite un solo comando.
 
 ## ATTENZIONE
 
@@ -40,41 +34,28 @@ e dal bucket AWS S3 di cui si fornisce l'accesso.
 L'autore non è responsabile di eventuali perdite di dati causati
 dall'uso, dalla modifica o da errori del programma.
 
-- Eseguire sempre delle copie di backup dei dati importanti. 
-- Prestare molta attenzione ai messaggi di alert che il programma fornisce.
-- Avere chiaro cosa si sta facendo e quali sono le conseguenze.
-
 ## Nota sui percosi S3
 
 Le librerie che utilizzano AWS S3 come Boto3 solitamente si riferiscono 
 ad un oggetto specificando separatamente il nome del 'bucket' e un 'prefix'. 
 In questo contesto un **percorso S3 intende 
-una unica stringa composta da 'nomebucket' + '/' + 'prefix'**
+un'unica stringa composta da 'nomebucket' + '/' + 'prefix'**
 esempio `nomebucket/prefix/file.ext`. 
 
 
 # Installazione
 
-Il programma può essere installato su un computer MASTER e su uno o più computer SLAVE.
-
-Scaricare ed eseguire il programma
+Il programma non deve essere installato è sufficiente scaricalo ed eseguirlo come script python3.
 
 ```
 $ wget https://raw.githubusercontent.com/Amecom/S32Server/master/s32s.py
-$ python s32s.py
+$ python3 s32s.py
 ```
-
-Al primo avvio verrà creato un file 's32s.ini' e verrà chiesto di inserire:
-
-1) la modalità di esecuzione del computer: MASTER o SLAVE.
-2) il percorso S3 del file o directory di mappatura.
-
 
 ## Requisiti
 
 - Python 3.x
 - Package [Boto3](https://github.com/boto/boto3)
-- File 'credentials'
 - File di mappatura percorsi
 
 ## Installare Boto3
@@ -83,12 +64,8 @@ Al primo avvio verrà creato un file 's32s.ini' e verrà chiesto di inserire:
 $ pip install boto3
 ```
 
-## Creare file credentials
-
-
-Il corretto funzionamento della libreria BOTO3 inclusa nel codice.
-dipende dalla creazione di un file ```~/.aws/credentials```
-Il contenuto del file è simile a questo:
+L'utilizzo della libreria BOTO3 da parte del programma
+richiede la creazione di un file ```~/.aws/credentials``` simile a questo:
 
 ```
 [default]
@@ -100,8 +77,8 @@ Maggiori informazioni su [guida BOTO3](https://github.com/boto/boto3).
 
 ## Creare un file di mappatura
 
-Il file di mappatura è un file JSON che descrive una lista di oggetti/dizionari mappa.
-Una mappa descrive un percorso di mappatura indipendente ed è formato dalle seguenti proprietà
+Il file di mappatura è un file JSON che contiene una lista di oggetti mappa.
+Una oggetto mappa descrive percorsi indipendente ed è formato dalle seguenti proprietà:
 
 | Property | Mandatory | Description |
 | --- | --- | --- |
@@ -112,20 +89,20 @@ Una mappa descrive un percorso di mappatura indipendente ed è formato dalle seg
 | `slave` | YES IF SLAVE | Directory del computer SLAVE in cui verranno copiati i file recuperati da S3. |
 | `ignore` | NO | Regole di esclusione dei percorsi. |
 
-Esempio 'map.json':
+Esempio file 'mapping.json':
 ```
 [
     {
-      "name": "PROJECT 1",
-      "description": "OPTIONAL PROJECT 1 DESCRIPTION",
+      "name": "MAP 1",
+      "description": "OPTIONAL MAP 1 DESCRIPTION",
       "master": "c:/path/dir/master/1",
       "s3": "bucketname/backup/dir1",
       "slave": "/path/slave/dir1",
       "ignore": ["*__pycache__*", ".*", "*.bmp" ]
     },
     {
-      "name": "PROJECT 2",
-      "description": "OPTIONAL PROJECT 2 DESCRIPTION",
+      "name": "MAP 2",
+      "description": "OPTIONAL MAP 2 DESCRIPTION",
       "master": "c:/path/dir/master/2",
       "s3": "bucketname/dir/dir/dir",
       "slave": "/path/slave/dir2",
@@ -134,39 +111,38 @@ Esempio 'map.json':
 ]
 ```
 
-Il file "map.json" contiene due mappe chiamate 'PROJECT 1' e 'PROJECT 2'.
+Il file "mapping.json" contiene due mappe.
 
-- 'PROJECT 1' sincronizza tutti gli oggetti presenti in "c:/path/dir/master/1"
+- 'MAP 1' sincronizza tutti gli oggetti presenti in "c:/path/dir/master/1"
 sul percorso S3 "bucketname/backup/dir1" e dal percorso S3 sulla directory SLAVE "/path/slave/dir1".
 Contiene delle direttive 'ignore' per escludere degli oggetti durante il trasferimento.
 
-- 'PROJECT 2' tramite la proprietà 'files' specifica i file che si vuole copiare dalla directory master "c:/path/dir/master/2".
+- 'MAP 2' tramite la proprietà 'files' specifica i singoli file
+che si vuole copiare dalla directory master "c:/path/dir/master/2".
 
 IMPORTANTE:
 
-- Quando viene specificato solo il percorso della directory come in 'PROJECT 1' allora:
+- Quando è specificato solo il percorso della directory (MAP 1) allora:
 	- Se la directory di destinazione non esiste verrà creata.
 	- Se esiste verrà cancellata, e con essa tutti i files contenuti, e ricreata con i nuovi files.
 
-- Quando viene specificata una lista di files allora:
+- Quando è specificata una lista di files (MAP 2) allora:
 	- La directory di destinazione deve esistere. Non verrà creata.
 	- I files contenuti nella directory destinazione, se non sono inclusi nella lista 'files', sono conservati.
 
 ### Salvare il file di mappatura
 
-Il file di mappatura deve essere condiviso tra MASTER e SLAVE per questo motivo
-deve essere salvato in un percorso S3.
+Il file di mappatura è condiviso tra MASTER e SLAVE per questo motivo
+deve essere salvato in un percorso S3 esempio `bucketname/spam/foo/maps/mapping.json`.
 
-Quindi creo un percorso S3 `bucketname/spam/foo/maps` sul quale carico il file `map.json`.
-
-Quando il programma chiede di inserire il percorso dei file di mappatura
+Alla richiesta di inerimento di una mappa di percorsi
 è possibile inserire il percorso S3 di un file o di una directory.
-In una directory è possibile inserire più file di mappatura.
+Nel secondo caso verranno caricati tutti i file mappatura presenti nella directory.
 
 
-## Direttiva ignore
+## Proprietà ignore
 
-Ogni mappa può avere una proprietà ignore che, se espressa, deve essere una lista.
+La proprietà ignore, se espressa, è una lista di regole di filtro degli oggetti da non trasferire.
 
 È possibile utilizzare il carattere jolly '*' in questo modo:
 
@@ -182,36 +158,29 @@ alla directory principale. Esempio se la direcotry 'master' è `/data/foo`
 ed esiste un file `/data/foo/spam/dir/picure.jpg`, la direttiva ignore viene applicata
 alla stringa `spam/dir/picture.jpg` e NON a `picture.jpg` o `/spam/dir/picture.jpg`.
 
-## Esecuzione contemporanea della modalità MASTER e SLAVE
-
-Il programma può essere utilizzato in uno stesso computer sia in modalità
-MASTER che SLAVE. In questo caso è necessario
-specificare un file di mappatura per la modalità MASTER e uno per la modalità SLAVE.
-
-Utilizzare uno stessao file di mappatura nelle due modalità all'interno dello stesso computer
-non ha senso ed è pericoloso per i proprio dati.
-
 
 ## File 's32s.ini'
 
-La modifica del file s32s.ini nella maggior parte delle sue opzioni è configurabile
-attraverso 'l'interfaccia del programma
-alcune funzionalità permettono di velocizzare l'esecuzione dei task di upload e download.
+Alla prima esecuzione del programma viene creato un file s32s.ini.
+
+La maggior parte delle opzioni presenti nel file s32s.ini sono configurabili
+dall'interfaccia. Tuttavia è possibile aggiungere comandi personalizzati 
+inserendo instruzioni nel file .ini
 
 ### Custom command
 
-È possibile aggiungere all'interfaccia del programma comandi da richiamare
-senza uscire dal programma stesso.
+È possibile aggiungere nell'interfaccia del programma dei comandi 
+personalizzati da richiamare senza uscire dal programma stesso.
 
 Esempio: il computer SLAVE è un web server APACHE
-su cui vengono caricati dal percorso S3 i file aggiornati di un sito web potrebbe
-essere utile inserire nell'interfaccia un comando per riavviare il servizio httpd.
-In questo caso si può aggiungere nel file s32s.ini sotto il blocco [CUSTOMCOMMAND]
+su cui vengono caricati dal middleware S3 i file aggiornati di un sito web. 
+In questo esempio potrebbe essere utile inserire nell'interfaccia
+un comando per riavviare il servizio httpd.
+Per fare questo basta aggiungere nel file s32s.ini sotto il blocco [CUSTOMCOMMAND]
 la seguente riga:
 
 ```
 [CUSTOMCOMMAND]
 http_restart = sudo service httpd restart
 ```
-
-È possibile inserire un numero illimitato di comandi su ighe diverse.
+È possibile inserire un numero illimitato di comandi su righe diverse.
