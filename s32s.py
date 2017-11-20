@@ -12,7 +12,7 @@ import botocore.exceptions
 from time import sleep
 import boto3
 
-__version__ = "1.5"
+__version__ = "1.6"
 os.sep = "/"
 S3RESOURCE = boto3.resource('s3')
 CONFIG = configparser.ConfigParser()
@@ -42,7 +42,7 @@ TXT_LABEl_CONFIGURATION = "Configuration"
 TXT_SORT_MAPS_ALPHABETICALLY = "Sort the maps alphabetically"
 TXT_HIDE_DEL_ALERT = "Alert delete"
 TXT_HIDE_TRANSFER_DETAIL = "Show transfer details"
-TXT_DEFAULT_VALUE = "DEFAULT VALUE"
+TXT_DEFAULT_VALUE = "DEFAULT"
 TXT_CURRENT_STATUS = "Current status is {status}"
 TXT_SWITH_CONFIRM = "You have moved to {mode_name} mode"
 TXT_TRANFER_ALL_HEADER = "Execute transfert {current} of {total}"
@@ -749,7 +749,6 @@ def command_advanced():
     hide_option_name = ["ismaster", "time_sleep_after_rm"]
     list_option = [ x for x in CONFIG_MAIN_OPTIONS if x[0] not in hide_option_name ]
 
-    print_title(TXT_LABEl_CONFIGURATION)
     for n, v in enumerate(list_option) :
         option, label, default = v
         current_value = CONFIG['MAIN'].getboolean(option)
@@ -841,6 +840,7 @@ def form_advanced():
     while i != "x":
         clear()
         cmd_adv = command_advanced()
+        print_title(TXT_LABEl_CONFIGURATION)
         for cmd, label, fun in cmd_adv:
             print_text("{cmd:>3} = {label}".format(cmd=cmd , label=label))
 
