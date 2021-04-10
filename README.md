@@ -1,6 +1,6 @@
 # S32S
 
-S32S is Python3 command-line interface (CLI) program to automate
+S32S is Python command-line interface (CLI) program to automate
 data transfers, through routing paths, between master and slave computers using AWS S3
 as middleware and long-term repository.
 
